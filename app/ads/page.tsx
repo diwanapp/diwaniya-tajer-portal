@@ -16,6 +16,7 @@ import {
 import { marketplaceCategories, getStoredToken, tajerApi } from "@/lib/api";
 import type { MerchantAd, MerchantMeResponse } from "@/lib/types";
 import { TajerShell } from "@/components/tajer-shell";
+import { AuthGuard } from "@/components/auth-guard";
 import { StatusChip } from "@/components/status-chip";
 import { LoadingState } from "@/components/loading-state";
 
@@ -202,7 +203,8 @@ export default function AdsPage() {
   }, [ads]);
 
   return (
-    <TajerShell>
+    <AuthGuard>
+      <TajerShell>
       {loading ? (
         <LoadingState label="جاري تحميل طلبات الإعلانات..." />
       ) : (
@@ -415,6 +417,7 @@ export default function AdsPage() {
           </section>
         </>
       )}
-    </TajerShell>
+      </TajerShell>
+    </AuthGuard>
   );
 }

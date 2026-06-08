@@ -14,6 +14,7 @@ import {
 import { marketplaceCategories, getStoredToken, tajerApi } from "@/lib/api";
 import type { MerchantMeResponse, MerchantProduct } from "@/lib/types";
 import { TajerShell } from "@/components/tajer-shell";
+import { AuthGuard } from "@/components/auth-guard";
 import { StatusChip } from "@/components/status-chip";
 import { LoadingState } from "@/components/loading-state";
 
@@ -168,7 +169,8 @@ export default function ProductsPage() {
   }, [products]);
 
   return (
-    <TajerShell>
+    <AuthGuard>
+      <TajerShell>
       {loading ? (
         <LoadingState label="جاري تحميل منتجات المتجر..." />
       ) : (
@@ -353,6 +355,7 @@ export default function ProductsPage() {
           </section>
         </>
       )}
-    </TajerShell>
+      </TajerShell>
+    </AuthGuard>
   );
 }

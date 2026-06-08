@@ -17,6 +17,7 @@ import {
 import { getStoredToken, tajerApi } from "@/lib/api";
 import type { MerchantAd, MerchantMeResponse, MerchantProduct } from "@/lib/types";
 import { TajerShell } from "@/components/tajer-shell";
+import { AuthGuard } from "@/components/auth-guard";
 import { MetricCard } from "@/components/metric-card";
 import { StatusChip } from "@/components/status-chip";
 import { LoadingState } from "@/components/loading-state";
@@ -105,7 +106,8 @@ export default function DashboardPage() {
   );
 
   return (
-    <TajerShell>
+    <AuthGuard>
+      <TajerShell>
       {loading ? (
         <LoadingState label="جاري تجهيز لوحة التاجر..." />
       ) : (
@@ -259,6 +261,7 @@ export default function DashboardPage() {
           </section>
         </>
       )}
-    </TajerShell>
+      </TajerShell>
+    </AuthGuard>
   );
 }

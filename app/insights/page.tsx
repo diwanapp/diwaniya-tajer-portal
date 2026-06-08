@@ -17,6 +17,7 @@ import {
 import { getStoredToken, tajerApi } from "@/lib/api";
 import type { MerchantAd, MerchantMeResponse, MerchantProduct } from "@/lib/types";
 import { TajerShell } from "@/components/tajer-shell";
+import { AuthGuard } from "@/components/auth-guard";
 import { LoadingState } from "@/components/loading-state";
 import { StatusChip } from "@/components/status-chip";
 
@@ -152,7 +153,8 @@ export default function InsightsPage() {
   );
 
   return (
-    <TajerShell>
+    <AuthGuard>
+      <TajerShell>
       {loading ? (
         <LoadingState label="جاري تحميل الأثر التجاري..." />
       ) : (
@@ -304,6 +306,7 @@ export default function InsightsPage() {
           </section>
         </>
       )}
-    </TajerShell>
+      </TajerShell>
+    </AuthGuard>
   );
 }
