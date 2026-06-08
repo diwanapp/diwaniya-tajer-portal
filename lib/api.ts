@@ -1,6 +1,7 @@
 import type {
   MerchantAd,
   MerchantAuthResponse,
+  MerchantStore,
   MerchantMeResponse,
   MerchantProduct,
 } from "./types";
