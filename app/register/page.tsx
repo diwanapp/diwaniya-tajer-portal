@@ -1,0 +1,115 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { marketplaceCategories, setStoredToken, tajerApi } from "@/lib/api";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    display_name: "",
+    phone: "",
+    store_name: "",
+    category: "بقالة",
+    city_name_ar: "الرياض",
+    district_name_ar: "",
+    whatsapp: "",
+    description: "",
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  function setField(key: keyof typeof form, value: string) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const result = await tajerApi.register(form);
+      setStoredToken(result.access_token);
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر إنشاء الحساب.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-ivory-50 p-5 lg:p-10">
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-black text-gold-700">بوابة التجار</p>
+            <h1 className="text-3xl font-black text-navy-900">تسجيل تاجر جديد</h1>
+          </div>
+          <Link href="/login" className="rounded-full border border-sand-400/40 px-5 py-2 text-sm font-bold">
+            لدي حساب
+          </Link>
+        </div>
+
+        <form onSubmit={submit} className="surface p-6 lg:p-8">
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div>
+              <label className="text-sm font-bold">البريد الإلكتروني</label>
+              <input className="input mt-2" value={form.email} onChange={(e) => setField("email", e.target.value)} required />
+            </div>
+            <div>
+              <label className="text-sm font-bold">كلمة المرور</label>
+              <input className="input mt-2" type="password" value={form.password} onChange={(e) => setField("password", e.target.value)} required />
+              <p className="mt-1 text-xs text-ink-700/60">8 أحرف على الأقل وتشمل حرفًا ورقمًا.</p>
+            </div>
+            <div>
+              <label className="text-sm font-bold">اسم المسؤول</label>
+              <input className="input mt-2" value={form.display_name} onChange={(e) => setField("display_name", e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-bold">رقم الجوال</label>
+              <input className="input mt-2" value={form.phone} onChange={(e) => setField("phone", e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-bold">اسم المتجر</label>
+              <input className="input mt-2" value={form.store_name} onChange={(e) => setField("store_name", e.target.value)} required />
+            </div>
+            <div>
+              <label className="text-sm font-bold">التصنيف</label>
+              <select className="input mt-2" value={form.category} onChange={(e) => setField("category", e.target.value)}>
+                {marketplaceCategories.map((category) => (
+                  <option key={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-bold">المدينة</label>
+              <input className="input mt-2" value={form.city_name_ar} onChange={(e) => setField("city_name_ar", e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-bold">الحي</label>
+              <input className="input mt-2" value={form.district_name_ar} onChange={(e) => setField("district_name_ar", e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-bold">واتساب المتجر</label>
+              <input className="input mt-2" value={form.whatsapp} onChange={(e) => setField("whatsapp", e.target.value)} />
+            </div>
+            <div className="lg:col-span-2">
+              <label className="text-sm font-bold">وصف مختصر</label>
+              <textarea className="input mt-2 min-h-28" value={form.description} onChange={(e) => setField("description", e.target.value)} />
+            </div>
+          </div>
+
+          {error ? <p className="mt-5 rounded-2xl bg-err/10 p-3 text-sm font-bold text-err">{error}</p> : null}
+
+          <button disabled={loading} className="btn-primary mt-6 px-8 py-3 disabled:opacity-60">
+            {loading ? "جاري إنشاء الحساب..." : "إنشاء الحساب وإرسال المتجر للمراجعة"}
+          </button>
+        </form>
+      </div>
+    </main>
+  );
+}
