@@ -98,36 +98,16 @@ export default function StorePage() {
 
     setSaving(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "http://localhost:8010"}/merchants/stores/${store.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: form.name,
-            category: form.category,
-            city_name_ar: form.city_name_ar || undefined,
-            district_name_ar: form.district_name_ar || undefined,
-            phone: form.phone || undefined,
-            whatsapp: form.whatsapp || undefined,
-            google_maps_url: form.google_maps_url || undefined,
-            description: form.description || undefined,
-          }),
-        },
-      );
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        const errorMessage =
-          data?.detail?.error?.message ||
-          data?.detail?.message ||
-          "تعذر تحديث بيانات المتجر.";
-        throw new Error(errorMessage);
-      }
+      await tajerApi.updateStore(token, store.id, {
+        name: form.name,
+        category: form.category,
+        city_name_ar: form.city_name_ar || undefined,
+        district_name_ar: form.district_name_ar || undefined,
+        phone: form.phone || undefined,
+        whatsapp: form.whatsapp || undefined,
+        google_maps_url: form.google_maps_url || undefined,
+        description: form.description || undefined,
+      });
 
       setMessage("تم تحديث بيانات المتجر.");
       await reload();

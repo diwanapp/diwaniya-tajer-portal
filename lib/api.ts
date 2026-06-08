@@ -82,6 +82,27 @@ export const tajerApi = {
     return request<MerchantMeResponse>("/merchants/me", { token });
   },
 
+  updateStore(
+    token: string,
+    storeId: string,
+    payload: {
+      name: string;
+      category: string;
+      city_name_ar?: string;
+      district_name_ar?: string;
+      phone?: string;
+      whatsapp?: string;
+      google_maps_url?: string;
+      description?: string;
+    },
+  ) {
+    return request<MerchantStore>(`/merchants/stores/${storeId}`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(payload),
+    });
+  },
+
   listProducts(token: string, storeId: string) {
     return request<{ products: MerchantProduct[] }>(
       `/merchants/stores/${storeId}/products`,
