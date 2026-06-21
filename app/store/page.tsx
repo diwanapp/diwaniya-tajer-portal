@@ -34,6 +34,16 @@ function fieldValue(value?: string | null) {
   return value?.trim() || "";
 }
 
+function isHttpUrl(value: string) {
+  if (!value.trim()) return true;
+  try {
+    const parsed = new URL(value.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export default function StorePage() {
   const [me, setMe] = useState<MerchantMeResponse | null>(null);
   const [form, setForm] = useState<StoreForm>({
@@ -77,7 +87,7 @@ export default function StorePage() {
 
   useEffect(() => {
     reload()
-      .catch(() => setMessage("تعذر تحميل بيانات المتجر. تأكد من تشغيل الباكند."))
+      .catch(() => setMessage("تعذر تحميل بيانات المتجر. حاول مرة أخرى."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -97,6 +107,15 @@ export default function StorePage() {
       return;
     }
 
+    if (form.name.trim().length < 2) {
+      setMessage("اسم المتجر مطلوب ويجب أن يكون واضحًا.");
+      return;
+    }
+    if (!isHttpUrl(form.google_maps_url)) {
+      setMessage("رابط الموقع يجب أن يبدأ بـ http أو https.");
+      return;
+    }
+
     setSaving(true);
     try {
       await tajerApi.updateStore(token, store.id, {
@@ -110,10 +129,10 @@ export default function StorePage() {
         description: form.description || undefined,
       });
 
-      setMessage("تم تحديث بيانات المتجر.");
+      setMessage("تم حفظ بيانات المتجر بنجاح.");
       await reload();
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "تعذر تحديث بيانات المتجر.");
+    } catch {
+      setMessage("تعذر حفظ التعديلات. راجع الحقول وحاول مرة أخرى.");
     } finally {
       setSaving(false);
     }
@@ -141,7 +160,7 @@ export default function StorePage() {
                 </h1>
 
                 <p className="mt-4 max-w-2xl text-sm leading-8 text-ivory-100/72">
-                  حدّث اسم المتجر، التصنيف، الموقع، ووسائل التواصل. أي تعديل مهم قد يرسل للمراجعة قبل الظهور.
+                  حدّث بيانات متجرك لتساعد الإدارة على مراجعتها بدقة. سيظهر ما يتم اعتماده داخل التطبيق حسب الإعدادات المتاحة.
                 </p>
               </div>
 
@@ -151,7 +170,7 @@ export default function StorePage() {
                   <p className="font-black">ملاحظة</p>
                 </div>
                 <p className="mt-3 text-sm leading-7 text-ivory-100/70">
-                  البيانات الواضحة تساعد المستخدم يعرف المتجر ويتواصل معه بسهولة.
+                  البيانات الواضحة تساعد الإدارة على مراجعة المتجر وتساعد مستخدمي التطبيق لاحقًا على فهم نشاطك.
                 </p>
               </div>
             </div>
@@ -187,13 +206,13 @@ export default function StorePage() {
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-navy-900">تحديث البيانات</h2>
-                  <p className="mt-1 text-sm text-ink-700/60">اكتب البيانات كما تحب أن تظهر.</p>
+                  <p className="mt-1 text-sm text-ink-700/60">اكتب البيانات التي ترغب بمراجعتها من الإدارة.</p>
                 </div>
               </div>
 
               <div className="mt-5 space-y-4">
                 <div>
-                  <label className="text-sm font-bold text-ink-700">اسم المتجر</label>
+                  <label className="text-sm font-bold text-ink-700">اسم المتجر <span className="text-err">*</span></label>
                   <input
                     className="input mt-2"
                     value={form.name}
@@ -254,10 +273,10 @@ export default function StorePage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-bold text-ink-700">رابط الموقع</label>
+                  <label className="text-sm font-bold text-ink-700">رابط الموقع على الخريطة</label>
                   <input
                     className="input mt-2"
-                    placeholder="رابط Google Maps أو موقع المتجر"
+                    placeholder="https://maps.google.com/?q=..."
                     value={form.google_maps_url}
                     onChange={(e) => setField("google_maps_url", e.target.value)}
                   />
@@ -290,11 +309,11 @@ export default function StorePage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-black text-navy-900">معاينة مختصرة</h2>
-                    <p className="mt-1 text-sm text-ink-700/60">هكذا تظهر بياناتك الأساسية.</p>
+                    <p className="mt-1 text-sm text-ink-700/60">معاينة للبيانات التي تراجعها الإدارة.</p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => reload().catch(() => setMessage("تعذر تحديث البيانات."))}
+                    onClick={() => reload().catch(() => setMessage("تعذر تحديث البيانات. حاول مرة أخرى."))}
                     className="inline-flex items-center gap-2 rounded-full border border-sand-400/40 px-4 py-2 text-sm font-bold text-navy-900"
                   >
                     <RefreshCw size={16} />
@@ -308,12 +327,12 @@ export default function StorePage() {
                       <Store size={26} />
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-navy-900">{form.name || "اسم المتجر"}</h3>
+                      <h3 className="text-xl font-black text-navy-900">{form.name || "بيانات المتجر غير مكتملة"}</h3>
                       <p className="mt-1 text-sm text-ink-700/65">
                         {[form.category, form.city_name_ar, form.district_name_ar].filter(Boolean).join(" · ") || "التصنيف والموقع"}
                       </p>
                       <p className="mt-3 text-sm leading-7 text-ink-700/70">
-                        {form.description || "وصف مختصر للمتجر يظهر هنا."}
+                        {form.description || "أضف وصفًا مختصرًا يساعد الإدارة على فهم نشاط المتجر."}
                       </p>
                     </div>
                   </div>
@@ -323,23 +342,23 @@ export default function StorePage() {
               <div className="surface p-6">
                 <h2 className="text-xl font-black text-navy-900">وسائل التواصل</h2>
                 <div className="mt-5 grid gap-3">
-                  <div className="flex items-center justify-between rounded-2xl bg-ivory-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ivory-50 p-4">
                     <div className="flex items-center gap-3">
                       <Phone className="text-gold-700" size={20} />
                       <span className="font-bold text-ink-700">اتصال</span>
                     </div>
-                    <span className="num font-black text-navy-900">{form.phone || "—"}</span>
+                    <span className="num break-all font-black text-navy-900">{form.phone || "—"}</span>
                   </div>
 
-                  <div className="flex items-center justify-between rounded-2xl bg-ivory-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ivory-50 p-4">
                     <div className="flex items-center gap-3">
                       <MessageCircle className="text-gold-700" size={20} />
                       <span className="font-bold text-ink-700">واتساب</span>
                     </div>
-                    <span className="num font-black text-navy-900">{form.whatsapp || "—"}</span>
+                    <span className="num break-all font-black text-navy-900">{form.whatsapp || "—"}</span>
                   </div>
 
-                  <div className="flex items-center justify-between rounded-2xl bg-ivory-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ivory-50 p-4">
                     <div className="flex items-center gap-3">
                       <CheckCircle2 className="text-gold-700" size={20} />
                       <span className="font-bold text-ink-700">الحالة</span>

@@ -4,12 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   BellRing,
-  Eye,
   Megaphone,
-  MessageCircle,
-  MousePointerClick,
   PackageCheck,
-  Phone,
   RefreshCw,
   Store,
   TrendingUp,
@@ -38,9 +34,6 @@ function InsightMetric({
         <div className="rounded-2xl bg-gold-500/12 p-3 text-gold-700">
           <Icon size={22} />
         </div>
-        <span className="rounded-full bg-ivory-50 px-3 py-1 text-xs font-black text-ink-700/60">
-          قريبًا
-        </span>
       </div>
       <p className="mt-5 text-sm text-ink-700/70">{title}</p>
       <p className="num mt-2 text-4xl font-black text-navy-900">{value}</p>
@@ -77,6 +70,10 @@ function ReadinessItem({
   );
 }
 
+function moderationState(ad: MerchantAd) {
+  return ad.review_status || ad.status;
+}
+
 export default function InsightsPage() {
   const [me, setMe] = useState<MerchantMeResponse | null>(null);
   const [products, setProducts] = useState<MerchantProduct[]>([]);
@@ -96,18 +93,18 @@ export default function InsightsPage() {
 
     const store = nextMe.stores[0];
     if (store) {
-      const [productResult, adResult] = await Promise.all([
+      const [productsResponse, adsResponse] = await Promise.all([
         tajerApi.listProducts(token, store.id),
         tajerApi.listAds(token, store.id),
       ]);
-      setProducts(productResult.products);
-      setAds(adResult.ads);
+      setProducts(productsResponse.products);
+      setAds(adsResponse.ads);
     }
   }
 
   useEffect(() => {
     reload()
-      .catch(() => setMessage("تعذر تحميل المؤشرات. تأكد من تشغيل الباكند."))
+      .catch(() => setMessage("تعذر تحميل المؤشرات. حاول مرة أخرى."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -118,8 +115,8 @@ export default function InsightsPage() {
   ).length;
 
   const pendingProducts = products.filter((product) => product.status === "pending_review").length;
-  const pendingAds = ads.filter((ad) => ad.status === "pending_review").length;
-  const approvedAds = ads.filter((ad) => ad.status === "approved" || ad.status === "active").length;
+  const pendingAds = ads.filter((ad) => moderationState(ad) === "pending_review").length;
+  const approvedAds = ads.filter((ad) => moderationState(ad) === "approved" || ad.status === "active").length;
 
   const readiness = useMemo(
     () => [
@@ -156,23 +153,23 @@ export default function InsightsPage() {
     <AuthGuard>
       <TajerShell>
       {loading ? (
-        <LoadingState label="جاري تحميل الأثر التجاري..." />
+        <LoadingState label="جاري تحميل المؤشرات..." />
       ) : (
         <>
           <section className="rounded-[2rem] bg-navy-900 p-6 text-ivory-50 shadow-card lg:p-8">
             <div className="grid gap-6 lg:grid-cols-[1fr_0.75fr] lg:items-center">
               <div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-sm font-black text-gold-500">الأثر التجاري</p>
+                  <p className="text-sm font-black text-gold-500">المؤشرات</p>
                   <StatusChip status={store?.status} />
                 </div>
 
                 <h1 className="mt-3 text-3xl font-black leading-tight lg:text-5xl">
-                  تابع حضور متجرك
+                  المؤشرات قيد التجهيز
                 </h1>
 
                 <p className="mt-4 max-w-2xl text-sm leading-8 text-ivory-100/72">
-                  هنا تظهر لاحقًا مؤشرات المشاهدات والضغطات. حاليًا نعرض جاهزية المتجر والمنتجات والإعلانات.
+                  تعرض هذه الصفحة جاهزية المتجر والمنتجات والإعلانات اعتمادًا على البيانات المتاحة حاليًا، دون أرقام تقديرية.
                 </p>
               </div>
 
@@ -205,28 +202,28 @@ export default function InsightsPage() {
 
           <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <InsightMetric
-              title="مشاهدات المتجر"
-              value="—"
-              hint="عدد مرات ظهور صفحة المتجر داخل التطبيق."
-              icon={Eye}
+              title="جاهزية البيانات"
+              value={`${readinessScore}%`}
+              hint="محسوبة من توفر المتجر والمنتجات والإعلانات."
+              icon={BarChart3}
             />
             <InsightMetric
-              title="ضغطات الاتصال"
-              value="—"
-              hint="عدد الضغطات على زر الاتصال من المستخدمين."
-              icon={Phone}
+              title="المنتجات المسجلة"
+              value={products.length}
+              hint={`${approvedProducts} معتمد · ${pendingProducts} قيد المراجعة`}
+              icon={PackageCheck}
             />
             <InsightMetric
-              title="ضغطات واتساب"
-              value="—"
-              hint="عدد الضغطات على واتساب من صفحة المتجر أو المنتج."
-              icon={MessageCircle}
+              title="طلبات الإعلان"
+              value={ads.length}
+              hint={`${approvedAds} معتمد · ${pendingAds} قيد المراجعة`}
+              icon={Megaphone}
             />
             <InsightMetric
-              title="ضغطات الإعلان"
-              value="—"
-              hint="عدد الضغطات على الإعلانات بعد تفعيل التتبع."
-              icon={MousePointerClick}
+              title="عناصر تنتظر المراجعة"
+              value={pendingProducts + pendingAds}
+              hint="منتجات وإعلانات تنتظر قرار الإدارة."
+              icon={BellRing}
             />
           </section>
 
@@ -296,10 +293,10 @@ export default function InsightsPage() {
               <div className="mt-5 rounded-[1.5rem] border border-gold-500/25 bg-gold-500/10 p-5">
                 <div className="flex items-center gap-3">
                   <Megaphone className="text-gold-700" />
-                  <h3 className="font-black text-navy-900">ملاحظة</h3>
+                  <h3 className="font-black text-navy-900">مؤشرات الأداء</h3>
                 </div>
                 <p className="mt-3 text-sm leading-7 text-ink-700/70">
-                  مؤشرات المشاهدات والضغطات تحتاج ربطًا من التطبيق عند ضغط المستخدم على المتجر أو الاتصال أو واتساب أو الإعلان.
+                  لن تظهر أي مؤشرات أداء هنا إلا بعد توفير بيانات حقيقية من التطبيق.
                 </p>
               </div>
             </div>

@@ -47,12 +47,36 @@ export type MerchantAd = {
   target_district_id?: string | null;
   image_url?: string | null;
   receipt_image_url?: string | null;
+  receipt_url?: string | null;
   requested_start_date?: string | null;
   requested_end_date?: string | null;
-  amount_paid?: string | null;
+  amount_paid?: string | number | null;
   currency: string;
   status: string;
+  review_status?: string | null;
   review_note?: string | null;
+  required_changes?: string[] | null;
+  payment_status?: string | null;
+  payment_amount?: string | number | null;
+  payment_currency?: string | null;
+  payment_due_at?: string | null;
+  payment_note?: string | null;
+  payment_duration_days?: number | null;
+  payment_placement_screen?: string | null;
+  payment_requested_at?: string | null;
+  payment_verified_at?: string | null;
+  payment_rejected_at?: string | null;
+  publication_status?: string | null;
+  effective_delivery_status?: string | null;
+  next_action?: string | null;
+  allowed_actions?: string[] | null;
+  blockers?: string[] | null;
+  placement_screen?: string | null;
+  placement_slot?: string | null;
+  placement_starts_at?: string | null;
+  placement_ends_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export type MerchantAuthResponse = {

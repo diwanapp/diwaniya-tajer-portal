@@ -156,6 +156,27 @@ export const tajerApi = {
       body: JSON.stringify(payload),
     });
   },
+
+  updateAd(
+    token: string,
+    adId: string,
+    payload: {
+      title?: string;
+      description?: string;
+      target_category?: string;
+      image_url?: string;
+      receipt_image_url?: string;
+      amount_paid?: string;
+      requested_start_date?: string;
+      requested_end_date?: string;
+    },
+  ) {
+    return request<MerchantAd>(`/merchants/ads/${adId}`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 export const marketplaceCategories = [

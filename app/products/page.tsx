@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+/* eslint-disable @next/next/no-img-element */
+import { useEffect, useState } from "react";
 import {
   Boxes,
   CheckCircle2,
-  ImageIcon,
   PackagePlus,
   PackageSearch,
   Plus,
   RefreshCw,
-  CircleDollarSign,
+  Search,
+  XCircle,
 } from "lucide-react";
 import { marketplaceCategories, getStoredToken, tajerApi } from "@/lib/api";
 import type { MerchantMeResponse, MerchantProduct } from "@/lib/types";
@@ -18,19 +19,36 @@ import { AuthGuard } from "@/components/auth-guard";
 import { StatusChip } from "@/components/status-chip";
 import { LoadingState } from "@/components/loading-state";
 
-function formatMoney(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return "—";
-  return value.toLocaleString("ar-SA", {
-    maximumFractionDigits: 2,
-  });
+function isHttpUrl(value: string) {
+  if (!value.trim()) return true;
+  try {
+    const parsed = new URL(value.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+type ProductFilterKey = "all" | "pending" | "approved" | "rejected";
+
+function productMatchesFilter(product: MerchantProduct, filter: ProductFilterKey) {
+  if (filter === "all") return true;
+  if (filter === "pending") return product.status === "pending_review";
+  if (filter === "approved") return product.status === "approved" || product.status === "active";
+  if (filter === "rejected") return product.status === "rejected";
+  return true;
 }
 
 function ProductCard({ product }: { product: MerchantProduct }) {
   return (
     <div className="surface overflow-hidden p-5 transition hover:-translate-y-0.5 hover:shadow-glow">
       <div className="flex items-start gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-navy-900 text-gold-500">
-          {product.image_url ? <ImageIcon size={24} /> : <Boxes size={24} />}
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-navy-900 text-gold-500">
+          {product.image_url ? (
+            <img src={product.image_url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <Boxes size={24} />
+          )}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -90,6 +108,8 @@ export default function ProductsPage() {
     image_url: "",
   });
   const [message, setMessage] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [productFilter, setProductFilter] = useState<ProductFilterKey>("all");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -112,7 +132,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     reload()
-      .catch(() => setMessage("تعذر تحميل المنتجات. تأكد من تشغيل الباكند."))
+      .catch(() => setMessage("تعذر تحميل المنتجات. حاول مرة أخرى."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -125,6 +145,24 @@ export default function ProductsPage() {
 
     if (!token || !store) {
       setMessage("لم يتم العثور على متجر مرتبط بالحساب.");
+      return;
+    }
+
+    const price = Number(form.price);
+    if (form.name.trim().length < 2) {
+      setMessage("اسم المنتج مطلوب ويجب أن يكون واضحًا.");
+      return;
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+      setMessage("اكتب سعرًا صحيحًا أكبر من صفر.");
+      return;
+    }
+    if (!Number.isInteger(Number(form.stock_quantity)) || Number(form.stock_quantity) < 0) {
+      setMessage("اكتب كمية صحيحة لا تقل عن صفر.");
+      return;
+    }
+    if (!isHttpUrl(form.image_url)) {
+      setMessage("رابط الصورة يجب أن يبدأ بـ http أو https.");
       return;
     }
 
@@ -145,10 +183,10 @@ export default function ProductsPage() {
         image_url: "",
       });
 
-      setMessage("تم إرسال المنتج للمراجعة بنجاح.");
+      setMessage("تم إرسال المنتج للمراجعة.");
       await reload();
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "تعذر إضافة المنتج.");
+    } catch {
+      setMessage("تعذر إرسال المنتج للمراجعة. راجع الحقول وحاول مرة أخرى.");
     } finally {
       setSaving(false);
     }
@@ -158,15 +196,23 @@ export default function ProductsPage() {
   const approvedProducts = products.filter(
     (product) => product.status === "approved" || product.status === "active",
   ).length;
-
-  const stockValue = useMemo(() => {
-    return products.reduce((sum, product) => {
-      const price = Number(product.price);
-      const quantity = Number(product.stock_quantity);
-      if (!Number.isFinite(price) || !Number.isFinite(quantity)) return sum;
-      return sum + price * quantity;
-    }, 0);
-  }, [products]);
+  const rejectedProducts = products.filter((product) => product.status === "rejected").length;
+  const visibleProducts = products.filter((product) => {
+    if (!productMatchesFilter(product, productFilter)) return false;
+    const query = productSearch.trim().toLocaleLowerCase("ar-SA");
+    if (!query) return true;
+    return [product.name, product.category, product.description]
+      .filter(Boolean)
+      .join(" ")
+      .toLocaleLowerCase("ar-SA")
+      .includes(query);
+  });
+  const productFilters = [
+    { key: "all" as const, label: "الكل", count: products.length },
+    { key: "pending" as const, label: "قيد المراجعة", count: pendingProducts },
+    { key: "approved" as const, label: "معتمد", count: approvedProducts },
+    { key: "rejected" as const, label: "مرفوض", count: rejectedProducts },
+  ];
 
   return (
     <AuthGuard>
@@ -215,12 +261,10 @@ export default function ProductsPage() {
             </div>
 
             <div className="surface p-5">
-              <CircleDollarSign className="text-gold-700" />
-              <p className="mt-4 text-sm text-ink-700/70">قيمة المخزون التقريبية</p>
-              <p className="num mt-2 text-4xl font-black text-navy-900">
-                {formatMoney(stockValue)}
-              </p>
-              <p className="mt-1 text-sm text-ink-700/60">SAR</p>
+              <XCircle className="text-gold-700" />
+              <p className="mt-4 text-sm text-ink-700/70">مرفوض</p>
+              <p className="num mt-2 text-4xl font-black text-navy-900">{rejectedProducts}</p>
+              <p className="mt-1 text-sm text-ink-700/60">راجع ملاحظة الإدارة إن وجدت.</p>
             </div>
           </section>
 
@@ -238,7 +282,7 @@ export default function ProductsPage() {
 
               <div className="mt-5 space-y-4">
                 <div>
-                  <label className="text-sm font-bold text-ink-700">اسم المنتج</label>
+                    <label className="text-sm font-bold text-ink-700">اسم المنتج <span className="text-err">*</span></label>
                   <input
                     className="input mt-2"
                     placeholder="مثال: شاهي ممتاز"
@@ -263,10 +307,11 @@ export default function ProductsPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-sm font-bold text-ink-700">السعر</label>
+                    <label className="text-sm font-bold text-ink-700">السعر <span className="text-err">*</span></label>
                     <input
                       className="input mt-2"
                       placeholder="0.00"
+                      inputMode="decimal"
                       value={form.price}
                       onChange={(e) => setForm({ ...form, price: e.target.value })}
                       required
@@ -326,12 +371,42 @@ export default function ProductsPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => reload().catch(() => setMessage("تعذر تحديث المنتجات."))}
+                  onClick={() => reload().catch(() => setMessage("تعذر تحديث المنتجات. حاول مرة أخرى."))}
                   className="inline-flex items-center gap-2 rounded-full border border-sand-400/40 px-4 py-2 text-sm font-bold text-navy-900"
                 >
                   <RefreshCw size={16} />
                   تحديث
                 </button>
+              </div>
+
+              <div className="mb-4 rounded-[1.5rem] border border-sand-400/25 bg-white p-4">
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {productFilters.map((filter) => (
+                    <button
+                      key={filter.key}
+                      type="button"
+                      onClick={() => setProductFilter(filter.key)}
+                      className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-black ${
+                        productFilter === filter.key
+                          ? "border-gold-500/40 bg-gold-500/15 text-navy-900"
+                          : "border-sand-400/35 bg-ivory-50 text-ink-700/70"
+                      }`}
+                    >
+                      {filter.label}
+                      <span className="num rounded-full bg-white px-2 py-0.5 text-[11px] text-ink-700/65">{filter.count}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <label className="relative mt-4 block">
+                  <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-700/45" size={18} />
+                  <input
+                    className="input pr-10"
+                    placeholder="ابحث باسم المنتج أو التصنيف"
+                    value={productSearch}
+                    onChange={(event) => setProductSearch(event.target.value)}
+                  />
+                </label>
               </div>
 
               {products.length === 0 ? (
@@ -344,9 +419,19 @@ export default function ProductsPage() {
                     أضف أول منتج في متجرك. بعد المراجعة، يصبح جاهزًا للظهور في سوق ديوانية.
                   </p>
                 </div>
+              ) : visibleProducts.length === 0 ? (
+                <div className="surface p-8 text-center">
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-navy-900 text-gold-500">
+                    <Search size={34} />
+                  </div>
+                  <h3 className="mt-5 text-2xl font-black text-navy-900">لا توجد نتائج مطابقة</h3>
+                  <p className="mx-auto mt-3 max-w-md text-sm leading-8 text-ink-700/65">
+                    غيّر التصفية أو امسح البحث لعرض المنتجات المحمّلة.
+                  </p>
+                </div>
               ) : (
                 <div className="grid gap-4">
-                  {products.map((product) => (
+                  {visibleProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
                 </div>

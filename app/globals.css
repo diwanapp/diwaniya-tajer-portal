@@ -5,13 +5,13 @@
 @tailwind utilities;
 
 :root {
-  --navy-900: #1F3A4D;
-  --navy-800: #264558;
-  --navy-700: #2C5066;
-  --ivory-50: #F7F1E6;
-  --ivory-100: #F1E9D9;
-  --sand-400: #B89F7A;
-  --gold-500: #C9A86A;
+  --navy-900: #10263A;
+  --navy-800: #183B55;
+  --navy-700: #183B55;
+  --ivory-50: #FAF7F2;
+  --ivory-100: #F5EFE3;
+  --sand-400: #B79A72;
+  --gold-500: #C8AD83;
   --ink-900: #0F1F2A;
   --ink-700: #34485A;
   --ok: #5E8B6B;
@@ -54,21 +54,21 @@
 
   .btn-primary {
     border-radius: 999px;
-    background: linear-gradient(135deg, #C9A86A, #B08F4F);
+    background: linear-gradient(135deg, #C8AD83, #B79A72);
     color: #152836;
     font-weight: 800;
-    box-shadow: 0 14px 36px -20px rgba(201,168,106,0.9);
+    box-shadow: 0 14px 36px -20px rgba(183,154,114,0.9);
     transition: transform 150ms ease, box-shadow 150ms ease;
   }
 
   .btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 18px 46px -22px rgba(201,168,106,1);
+    box-shadow: 0 18px 46px -22px rgba(183,154,114,1);
   }
 
   .btn-secondary {
     border-radius: 999px;
-    border: 1px solid rgba(201,168,106,0.45);
+    border: 1px solid rgba(200,173,131,0.45);
     color: #F7F1E6;
     background: rgba(255,255,255,0.06);
   }
@@ -83,7 +83,7 @@
   }
 
   .input:focus {
-    border-color: rgba(201,168,106,0.9);
-    box-shadow: 0 0 0 3px rgba(201,168,106,0.16);
+    border-color: rgba(183,154,114,0.9);
+    box-shadow: 0 0 0 3px rgba(183,154,114,0.16);
   }
 }

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "بوابة التجار | ديوانية",
-  description: "اعرض منتجاتك وخدماتك للديوانيات القريبة منك",
+  description: "أدر متجرك ومنتجاتك وطلبات الإعلان في ديوانية.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

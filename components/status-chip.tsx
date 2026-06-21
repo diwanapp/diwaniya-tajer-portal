@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, MinusCircle, PenLine, XCircle } from "lucide-react";
 
 type StatusChipProps = {
   status?: string | null;
@@ -10,21 +10,33 @@ export function StatusChip({ status }: StatusChipProps) {
   const config =
     normalized === "approved" || normalized === "active"
       ? {
-          label: "معتمد",
+          label: normalized === "active" ? "نشط" : "معتمد",
           className: "border-ok/20 bg-ok/10 text-ok",
           icon: CheckCircle2,
         }
-      : normalized === "rejected"
+      : normalized === "changes_requested"
         ? {
-            label: "مرفوض",
-            className: "border-err/20 bg-err/10 text-err",
-            icon: XCircle,
+            label: "يتطلب تعديل من التاجر",
+            className: "border-warn/25 bg-warn/10 text-warn",
+            icon: PenLine,
           }
-        : {
-            label: "قيد المراجعة",
-            className: "border-warn/20 bg-warn/10 text-warn",
-            icon: Clock3,
-          };
+        : normalized === "rejected"
+          ? {
+              label: "مرفوض نهائيًا",
+              className: "border-err/20 bg-err/10 text-err",
+              icon: XCircle,
+            }
+          : normalized === "inactive"
+            ? {
+                label: "غير نشط",
+                className: "border-sand-400/30 bg-ivory-100 text-ink-700/70",
+                icon: MinusCircle,
+              }
+            : {
+                label: "قيد المراجعة",
+                className: "border-warn/20 bg-warn/10 text-warn",
+                icon: Clock3,
+              };
 
   const Icon = config.icon;
 

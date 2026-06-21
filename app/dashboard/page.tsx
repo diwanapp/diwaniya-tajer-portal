@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BadgePercent,
+  Banknote,
   Boxes,
+  CalendarClock,
   CheckCircle2,
   ClipboardCheck,
   Eye,
   Megaphone,
-  MousePointerClick,
-  Phone,
-  Send,
   Store,
   TrendingUp,
 } from "lucide-react";
@@ -29,6 +28,22 @@ function EmptyMiniState({ title, text }: { title: string; text: string }) {
       <p className="mt-2 text-sm leading-7 text-ink-700/65">{text}</p>
     </div>
   );
+}
+
+function moderationState(ad: MerchantAd) {
+  return ad.review_status || ad.status;
+}
+
+function paymentStatus(ad: MerchantAd) {
+  return ad.payment_status || "not_requested";
+}
+
+function publicationStatus(ad: MerchantAd) {
+  return ad.publication_status || "";
+}
+
+function needsMerchantAction(ad: MerchantAd) {
+  return moderationState(ad) === "changes_requested" || paymentStatus(ad) === "payment_requested";
 }
 
 export default function DashboardPage() {
@@ -52,15 +67,15 @@ export default function DashboardPage() {
 
         const store = nextMe.stores[0];
         if (store) {
-          const [productResult, adResult] = await Promise.all([
+          const [productsResponse, adsResponse] = await Promise.all([
             tajerApi.listProducts(token, store.id),
             tajerApi.listAds(token, store.id),
           ]);
-          setProducts(productResult.products);
-          setAds(adResult.ads);
+          setProducts(productsResponse.products);
+          setAds(adsResponse.ads);
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "تعذر تحميل بيانات التاجر.");
+      } catch {
+        setError("تعذر تحميل بيانات التاجر. حاول التحديث مرة أخرى.");
       } finally {
         setLoading(false);
       }
@@ -73,20 +88,33 @@ export default function DashboardPage() {
 
   const pendingProducts = products.filter((item) => item.status === "pending_review").length;
   const approvedProducts = products.filter((item) => item.status === "approved" || item.status === "active").length;
-  const pendingAds = ads.filter((item) => item.status === "pending_review").length;
-  const totalAdSpend = ads.reduce((sum, ad) => sum + Number(ad.amount_paid || 0), 0);
+  const actionNeededAds = ads.filter(needsMerchantAction).length;
+  const liveAds = ads.filter((item) => publicationStatus(item) === "live").length;
+  const scheduledAds = ads.filter((item) => publicationStatus(item) === "scheduled").length;
+  const paymentRequestedAds = ads.filter((item) => paymentStatus(item) === "payment_requested").length;
+  const hasStoreBasics = Boolean(store?.name && store?.category);
+  const hasMapLink = Boolean(store?.google_maps_url);
+  const hasContact = Boolean(store?.phone || store?.whatsapp);
 
   const completionSteps = [
     {
-      label: "تسجيل المتجر",
-      done: Boolean(store),
+      label: "أكمل بيانات المتجر",
+      done: hasStoreBasics,
     },
     {
-      label: "إضافة منتج واحد على الأقل",
+      label: "أضف رابط الخريطة",
+      done: hasMapLink,
+    },
+    {
+      label: "أضف وسائل التواصل",
+      done: hasContact,
+    },
+    {
+      label: "أضف أول منتج",
       done: products.length > 0,
     },
     {
-      label: "طلب إعلان مدفوع",
+      label: "أرسل طلب إعلان",
       done: ads.length > 0,
     },
   ];
@@ -97,12 +125,14 @@ export default function DashboardPage() {
 
   const metrics = useMemo(
     () => [
-      { title: "مشاهدات المتجر", value: "—", hint: "تضاف بعد ربط تتبع المشاهدات من التطبيق.", icon: Eye },
-      { title: "ضغطات الاتصال", value: "—", hint: "مؤشر مهم لقياس نية الشراء.", icon: Phone },
-      { title: "ضغطات واتساب", value: "—", hint: "سنعرضها بعد إضافة tracking من التطبيق.", icon: Send },
-      { title: "ضغطات الإعلان", value: "—", hint: "تقيس أثر الإعلانات المدفوعة.", icon: MousePointerClick },
+      { title: "المنتجات المسجلة", value: String(products.length), hint: `${pendingProducts} قيد المراجعة · ${approvedProducts} معتمد`, icon: Boxes },
+      { title: "طلبات الإعلان", value: String(ads.length), hint: "كل طلب محمّل من بيانات المتجر.", icon: Megaphone },
+      { title: "يتطلب إجراء", value: String(actionNeededAds), hint: "تعديلات أو إيصالات تحتاج متابعة.", icon: BadgePercent },
+      { title: "بانتظار الدفع", value: String(paymentRequestedAds), hint: "طلبات تحتاج إيصالًا أو اعتماد دفع.", icon: Banknote },
+      { title: "ظاهرة الآن", value: String(liveAds), hint: `${scheduledAds} مجدولة للظهور`, icon: Eye },
+      { title: "مجدولة", value: String(scheduledAds), hint: "إعلانات لها موعد ظهور محدد.", icon: CalendarClock },
     ],
-    [],
+    [actionNeededAds, ads.length, approvedProducts, liveAds, paymentRequestedAds, pendingProducts, products.length, scheduledAds],
   );
 
   return (
@@ -125,7 +155,7 @@ export default function DashboardPage() {
                 </h1>
 
                 <p className="mt-4 max-w-2xl text-sm leading-8 text-ivory-100/72 lg:text-base">
-                  تابع منتجاتك وإعلاناتك ومؤشرات التواصل من مكان واحد. كل متجر ومنتج وإعلان يمر بالمراجعة قبل الظهور للمستخدمين.
+                  تابع بيانات متجرك ومنتجاتك وطلبات الإعلان من مكان واحد. كل متجر ومنتج وإعلان يمر بالمراجعة قبل الظهور للمستخدمين.
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-3">
@@ -143,6 +173,9 @@ export default function DashboardPage() {
                   <div>
                     <p className="text-sm font-black text-gold-400">جاهزية المتجر</p>
                     <p className="num mt-2 text-4xl font-black">{progress}%</p>
+                    <p className="mt-2 max-w-xs text-xs leading-6 text-ivory-100/62">
+                      محسوبة من اكتمال بيانات المتجر، وجود منتجات، ووجود طلبات إعلان قابلة للمراجعة أو الظهور.
+                    </p>
                   </div>
                   <div className="rounded-2xl bg-gold-500/15 p-3 text-gold-400">
                     <ClipboardCheck size={26} />
@@ -179,7 +212,7 @@ export default function DashboardPage() {
             </div>
           ) : null}
 
-          <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {metrics.map((metric) => (
               <MetricCard key={metric.title} {...metric} />
             ))}
@@ -201,20 +234,21 @@ export default function DashboardPage() {
             <div className="surface p-5">
               <div className="flex items-center justify-between">
                 <BadgePercent className="text-gold-700" />
-                <StatusChip status={pendingAds > 0 ? "pending_review" : ads.length > 0 ? "approved" : "pending_review"} />
+                <StatusChip status={actionNeededAds > 0 ? "changes_requested" : ads.length > 0 ? "approved" : "pending_review"} />
               </div>
               <p className="mt-4 text-sm text-ink-700/70">طلبات الإعلان</p>
               <p className="num mt-2 text-4xl font-black text-navy-900">{ads.length}</p>
-              <p className="mt-2 text-sm text-ink-700/65">{pendingAds} قيد المراجعة</p>
+              <p className="mt-2 text-sm text-ink-700/65">{actionNeededAds} يتطلب إجراء · {scheduledAds} مجدول</p>
             </div>
 
             <div className="surface p-5">
-              <Megaphone className="text-gold-700" />
-              <p className="mt-4 text-sm text-ink-700/70">إجمالي دفعات الإعلان المسجلة</p>
-              <p className="num mt-2 text-4xl font-black text-navy-900">
-                {totalAdSpend > 0 ? totalAdSpend.toLocaleString("ar-SA") : "—"}
-              </p>
-              <p className="mt-2 text-sm text-ink-700/65">SAR</p>
+              <div className="flex items-center justify-between">
+                <Eye className="text-gold-700" />
+                <StatusChip status={liveAds > 0 ? "approved" : "pending_review"} />
+              </div>
+              <p className="mt-4 text-sm text-ink-700/70">إعلانات ظاهرة الآن</p>
+              <p className="num mt-2 text-4xl font-black text-navy-900">{liveAds}</p>
+              <p className="mt-2 text-sm text-ink-700/65">{paymentRequestedAds} بانتظار الدفع · {scheduledAds} مجدول</p>
             </div>
           </section>
 
@@ -236,14 +270,14 @@ export default function DashboardPage() {
                 {ads.length === 0 ? (
                   <EmptyMiniState
                     title="اطلب أول إعلان مدفوع"
-                    text="الإعلانات ستساعدك لاحقًا على الظهور بشكل أفضل داخل السوق، وسنربطها بمؤشرات ضغطات ومشاهدات."
+                    text="أرسل طلب إعلان واضح وتابع مراجعته، دفعه، وتجهيز ظهوره من صفحة الإعلانات."
                   />
                 ) : null}
 
                 {products.length > 0 && ads.length > 0 ? (
                   <EmptyMiniState
-                    title="متجرك جاهز كبداية"
-                    text="تابع حالة المراجعة، وحدث منتجاتك وأسعارك بشكل دوري للحفاظ على جودة الظهور."
+                    title={actionNeededAds > 0 ? "لديك إعلانات تتطلب إجراء" : "متجرك جاهز كبداية"}
+                    text={actionNeededAds > 0 ? "راجع صفحة الإعلانات لمعرفة ملاحظات الإدارة أو تحديث الإيصالات المطلوبة." : "تابع حالة المراجعة، وحدث منتجاتك وأسعارك بشكل دوري للحفاظ على جودة الظهور."}
                   />
                 ) : null}
               </div>
@@ -252,10 +286,10 @@ export default function DashboardPage() {
             <div className="surface p-6">
               <div className="flex items-center gap-3">
                 <TrendingUp className="text-gold-700" />
-                <h2 className="text-xl font-black text-navy-900">قيمة الأثر التجاري</h2>
+                <h2 className="text-xl font-black text-navy-900">جاهزية الظهور التجاري</h2>
               </div>
               <p className="mt-4 text-sm leading-8 text-ink-700/70">
-                في المرحلة القادمة سنربط التطبيق بتتبع الضغطات على الاتصال، واتساب، والإعلانات. الهدف أن يرى التاجر أثر حضوره في ديوانية بوضوح، مما يجعل قرار تجديد الإعلان أو زيادة المنتجات أسهل.
+                ركّز الآن على بيانات متجر واضحة، منتجات مكتملة، وإعلانات بحالة مفهومة. أي مؤشرات أداء مستقبلية يجب أن تأتي من بيانات حقيقية من التطبيق.
               </p>
             </div>
           </section>

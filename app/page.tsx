@@ -4,11 +4,9 @@ import {
   BadgeCheck,
   BarChart3,
   Megaphone,
-  MousePointerClick,
   PackageCheck,
   ShieldCheck,
   Store,
-  TrendingUp,
 } from "lucide-react";
 
 const benefits = [
@@ -23,8 +21,8 @@ const benefits = [
     icon: PackageCheck,
   },
   {
-    title: "إعلانات قابلة للقياس",
-    text: "اطلب إعلانًا مدفوعًا وتابع أثره من خلال مؤشرات الضغطات لاحقًا.",
+    title: "إعلانات تحت المتابعة",
+    text: "أرسل طلب الإعلان وتابع المراجعة، الدفع، وتجهيز الظهور من بوابة واحدة.",
     icon: Megaphone,
   },
   {
@@ -34,20 +32,26 @@ const benefits = [
   },
 ];
 
-const metrics = [
-  { label: "ضغطات واتساب", value: "—", icon: MousePointerClick },
-  { label: "ضغطات اتصال", value: "—", icon: TrendingUp },
-  { label: "ضغطات إعلان", value: "—", icon: BarChart3 },
+const operations = [
+  { label: "تسجيل الدخول", value: "ابدأ", icon: BadgeCheck },
+  { label: "إعداد المتجر", value: "مراجعة", icon: Store },
+  { label: "طلبات الإعلان", value: "ظهور", icon: Megaphone },
+];
+
+const workflow = [
+  "تسجيل الدخول",
+  "إعداد المتجر",
+  "إضافة المنتجات",
+  "إرسال طلب الإعلان",
+  "مراجعة الإدارة",
+  "الظهور داخل التطبيق بعد الاعتماد",
 ];
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen overflow-hidden bg-navy-950 text-ivory-50">
-      <section className="relative">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(201,168,106,0.20),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(247,241,230,0.08),transparent_28%),linear-gradient(135deg,#152836_0%,#1F3A4D_48%,#152836_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-ivory-50 to-transparent" />
-
-        <div className="relative mx-auto max-w-7xl px-5 py-8 lg:px-8 lg:py-10">
+    <main className="min-h-screen overflow-hidden bg-ivory-50 text-ink-900">
+      <section className="relative bg-navy-900 text-ivory-50">
+        <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8 lg:py-10">
           <nav className="flex items-center justify-between">
             <div>
               <p className="text-base font-black text-gold-500">ديوانية</p>
@@ -72,28 +76,27 @@ export default function HomePage() {
               </div>
 
               <h1 className="mt-7 max-w-3xl text-4xl font-black leading-[1.18] tracking-tight text-ivory-50 lg:text-6xl">
-                <span className="block whitespace-nowrap">اعرض منتجاتك وخدماتك</span>
-                <span className="mt-2 block whitespace-nowrap">للديوانيات القريبة منك</span>
+                بوابة التاجر في ديوانية
               </h1>
 
               <p className="mt-6 max-w-2xl text-base leading-8 text-ivory-100/76 lg:text-lg">
-                منصة عملية للتجار لإدارة المتجر، المنتجات، الأسعار، المخزون، وطلبات الإعلانات داخل سوق ديوانية.
+                أدر متجرك، منتجاتك، وطلبات إعلانك في مكان واحد، وتابع اعتمادها وظهورها داخل التطبيق بعد مراجعة الإدارة.
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link href="/register" className="btn-primary inline-flex items-center gap-2 px-7 py-3">
-                  ابدأ الآن
+                <Link href="/login" className="btn-primary inline-flex items-center gap-2 px-7 py-3">
+                  دخول بوابة التاجر
                   <ArrowLeft size={18} />
                 </Link>
-                <Link href="/login" className="btn-secondary px-7 py-3 font-bold">
-                  لدي حساب تاجر
+                <Link href="#workflow" className="btn-secondary px-7 py-3 font-bold">
+                  تعرّف على آلية العمل
                 </Link>
               </div>
 
-              <div className="mt-8 grid max-w-xl grid-cols-3 gap-3">
+              <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
                 {[
                   ["مراجعة قبل النشر", "جودة أعلى"],
-                  ["إعلانات مدفوعة", "أثر أوضح"],
+                  ["طلبات إعلان", "حالة واضحة"],
                   ["متجر محلي", "حسب الحي"],
                 ].map(([title, hint]) => (
                   <div key={title} className="rounded-2xl border border-white/10 bg-white/7 p-4 backdrop-blur">
@@ -105,15 +108,13 @@ export default function HomePage() {
             </div>
 
             <div className="relative mx-auto w-full max-w-[520px]">
-              <div className="absolute -inset-8 rounded-[3rem] bg-gold-500/10 blur-3xl" />
-
               <div className="relative rounded-[2.25rem] border border-gold-500/25 bg-white/8 p-4 shadow-glow backdrop-blur">
                 <div className="rounded-[1.75rem] bg-ivory-50 p-5 text-ink-900 shadow-2xl">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-xs font-black text-gold-700">لوحة التاجر</p>
                       <h2 className="mt-1 text-xl font-black text-navy-900">
-                        لمحة الأداء
+                        مسار البوابة
                       </h2>
                     </div>
                     <div className="rounded-2xl bg-navy-900 p-3 text-gold-500">
@@ -122,29 +123,29 @@ export default function HomePage() {
                   </div>
 
                   <div className="mt-5 grid gap-3">
-                    {metrics.map((metric) => {
-                      const Icon = metric.icon;
+                    {operations.map((item) => {
+                      const Icon = item.icon;
                       return (
                         <div
-                          key={metric.label}
+                          key={item.label}
                           className="flex items-center justify-between rounded-2xl border border-sand-400/25 bg-white p-4"
                         >
                           <div className="flex items-center gap-3">
                             <div className="rounded-xl bg-gold-500/12 p-2 text-gold-700">
                               <Icon size={18} />
                             </div>
-                            <p className="text-sm font-bold text-ink-700/75">{metric.label}</p>
+                            <p className="text-sm font-bold text-ink-700/75">{item.label}</p>
                           </div>
-                          <p className="num text-2xl font-black text-navy-900">{metric.value}</p>
+                          <p className="text-sm font-black text-navy-900">{item.value}</p>
                         </div>
                       );
                     })}
                   </div>
 
                   <div className="mt-4 rounded-2xl bg-navy-900 p-4 text-ivory-50">
-                    <p className="text-sm font-black text-gold-400">قريبًا</p>
+                    <p className="text-sm font-black text-gold-400">واضح للتاجر</p>
                     <p className="mt-2 text-sm leading-7 text-ivory-100/78">
-                      مؤشرات الضغطات والمشاهدات ستوضح للتاجر أثر المنتجات والإعلانات على التواصل والطلبات المحتملة.
+                      كل طلب يمر بمراجعة الإدارة قبل الظهور، وتظهر حالته للتاجر بخطوة تالية واضحة.
                     </p>
                   </div>
                 </div>
@@ -158,16 +159,27 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-ivory-50 px-5 py-16 text-ink-900 lg:px-8">
+      <section id="workflow" className="bg-ivory-50 px-5 py-16 text-ink-900 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-black text-gold-700">مصمم للتاجر الجاد</p>
+            <p className="text-sm font-black text-gold-700">آلية العمل</p>
             <h2 className="mt-3 text-4xl font-black text-navy-900">
-              كل ما تحتاجه لإدارة حضورك في سوق ديوانية
+              من إعداد المتجر إلى الظهور بعد الاعتماد
             </h2>
             <p className="mt-4 text-sm leading-8 text-ink-700/70">
-              نسخة أولى خفيفة، عملية، وقابلة للتوسع نحو الدفع الإلكتروني، رفع الصور، والتحليلات المتقدمة.
+              البوابة تساعد التاجر على إرسال البيانات ومتابعة حالتها بوضوح دون أرقام تقديرية أو وعود قبل الاعتماد.
             </p>
+          </div>
+
+          <div className="mt-10 grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+            {workflow.map((step, index) => (
+              <div key={step} className="surface p-4 text-center">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-gold-500/12 text-sm font-black text-gold-700">
+                  {index + 1}
+                </div>
+                <p className="mt-3 text-sm font-black leading-6 text-navy-900">{step}</p>
+              </div>
+            ))}
           </div>
 
           <div className="mt-10 grid gap-4 lg:grid-cols-4">
@@ -194,7 +206,7 @@ export default function HomePage() {
               </p>
             </div>
             <Link href="/register" className="btn-primary mt-5 inline-flex px-7 py-3 lg:mt-0">
-              انضم كتاجر
+              تسجيل تاجر جديد
             </Link>
           </div>
         </div>
