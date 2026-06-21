@@ -29,7 +29,7 @@ import {
   TimerReset,
   XCircle,
 } from "lucide-react";
-import { marketplaceCategories, getStoredToken, tajerApi } from "@/lib/api";
+import { marketplaceCategories, getStoredToken, TajerApiError, tajerApi } from "@/lib/api";
 import type { MerchantAd, MerchantMeResponse } from "@/lib/types";
 import { TajerShell } from "@/components/tajer-shell";
 import { AuthGuard } from "@/components/auth-guard";
@@ -232,8 +232,22 @@ function isChangesRequested(ad: MerchantAd) {
   return moderationState(ad) === "changes_requested";
 }
 
+function canUpdateReceipt(ad: MerchantAd) {
+  const review = moderationState(ad);
+  const payment = paymentStatus(ad);
+  const publication = publicationStatus(ad);
+
+  return (
+    review !== "changes_requested" &&
+    review !== "rejected" &&
+    ["payment_requested", "rejected", "receipt_uploaded"].includes(payment) &&
+    publication !== "ended" &&
+    publication !== "cancelled"
+  );
+}
+
 function needsMerchantAction(ad: MerchantAd) {
-  return isChangesRequested(ad) || paymentStatus(ad) === "payment_requested";
+  return isChangesRequested(ad) || paymentStatus(ad) === "payment_requested" || paymentStatus(ad) === "rejected";
 }
 
 function sortTimestamp(ad: MerchantAd) {
@@ -414,6 +428,21 @@ function validateForm(form: AdForm) {
   return null;
 }
 
+function validateReceiptForm(form: AdForm) {
+  if (!form.receipt_image_url.trim()) return "أدخل رابط الإيصال قبل الإرسال.";
+  if (!isHttpUrl(form.receipt_image_url)) return "أدخل رابط إيصال صحيح يبدأ بـ http أو https.";
+  return null;
+}
+
+function receiptUpdateErrorMessage(error: unknown) {
+  if (error instanceof TajerApiError) {
+    if (error.status === 409) return "لا يمكن تحديث الإيصال في حالة الإعلان الحالية.";
+    if (error.status === 422) return "أدخل رابط إيصال صحيح يبدأ بـ http أو https.";
+  }
+
+  return "تعذر تحديث الإيصال. حاول مرة أخرى.";
+}
+
 function payloadFromForm(form: AdForm) {
   return {
     title: form.title.trim(),
@@ -453,15 +482,27 @@ function merchantAction(ad: MerchantAd) {
     };
   }
 
-  if (payment === "payment_requested") {
+  if (canUpdateReceipt(ad)) {
+    const hasReceipt = Boolean(receiptUrl(ad));
+
+    if (payment === "rejected") {
+      return {
+        label: "تحديث الإيصال",
+        detail: "راجع ملاحظة الإدارة ثم أرسل رابط إيصال صحيح لاعتماد الدفع.",
+        kind: "receipt" as const,
+      };
+    }
+
     return {
-      label: "إضافة / تحديث الإيصال",
-      detail: "أضف رابط الإيصال أو حدّث بيانات الدفع ثم أرسلها للمراجعة.",
-      kind: "edit" as const,
+      label: hasReceipt ? "تحديث الإيصال" : "إضافة / تحديث الإيصال",
+      detail: hasReceipt
+        ? "يمكنك تحديث رابط الإيصال ما دام بانتظار اعتماد الإدارة."
+        : "أضف رابط الإيصال ليتم إرساله للإدارة لاعتماد الدفع.",
+      kind: "receipt" as const,
     };
   }
 
-  if (payment === "receipt_uploaded") {
+  if (payment === "receipt_uploaded" && publication !== "ended" && publication !== "cancelled") {
     return {
       label: "بانتظار اعتماد الإيصال من الإدارة",
       detail: "تم تسجيل الإيصال، وسيظهر تحديث الحالة بعد اعتماد الدفع.",
@@ -810,9 +851,9 @@ function AdCard({ ad, onEdit }: { ad: MerchantAd; onEdit: (ad: MerchantAd) => vo
           ) : null}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            {action.kind === "edit" ? (
+            {action.kind === "edit" || action.kind === "receipt" ? (
               <button type="button" onClick={() => onEdit(ad)} className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm">
-                <PencilLine size={16} />
+                {action.kind === "receipt" ? <Receipt size={16} /> : <PencilLine size={16} />}
                 {action.label}
               </button>
             ) : action.kind === "details" ? (
@@ -936,10 +977,10 @@ function AdCard({ ad, onEdit }: { ad: MerchantAd; onEdit: (ad: MerchantAd) => vo
                   <p className="mt-2 text-sm leading-7 text-ink-700/70">{action.detail}</p>
                 </div>
               </div>
-              {action.kind === "edit" ? (
+              {action.kind === "edit" || action.kind === "receipt" ? (
                 <button type="button" onClick={() => onEdit(ad)} className="btn-primary mt-4 inline-flex items-center gap-2 px-5 py-3 text-sm">
-                  <PencilLine size={17} />
-                  تعديل الإعلان وإعادة الإرسال
+                  {action.kind === "receipt" ? <Receipt size={17} /> : <PencilLine size={17} />}
+                  {action.label}
                 </button>
               ) : null}
             </div>
@@ -966,6 +1007,8 @@ export default function AdsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const isReceiptOnlyEditing = editingAd ? canUpdateReceipt(editingAd) : false;
+  const editingAdHasReceipt = editingAd ? Boolean(receiptUrl(editingAd)) : false;
 
   async function reload() {
     const token = getStoredToken();
@@ -1000,6 +1043,11 @@ export default function AdsPage() {
   const highlightedFields = useMemo(() => {
     const fields = new Set<keyof AdForm>();
     if (!editingAd) return fields;
+
+    if (canUpdateReceipt(editingAd)) {
+      fields.add("receipt_image_url");
+      return fields;
+    }
 
     if (paymentStatus(editingAd) === "payment_requested") {
       fields.add("receipt_image_url");
@@ -1076,7 +1124,9 @@ export default function AdsPage() {
     setForm(formFromAd(ad));
     setNotice({
       tone: "info",
-      text: "عدّل الحقول المطلوبة ثم أرسل الإعلان للمراجعة مرة أخرى.",
+      text: canUpdateReceipt(ad)
+        ? "أدخل رابط الإيصال فقط، وسيتم إرساله للإدارة لاعتماد الدفع دون إعادة إرسال محتوى الإعلان."
+        : "عدّل الحقول المطلوبة ثم أرسل الإعلان للمراجعة مرة أخرى.",
     });
     window.requestAnimationFrame(() => {
       document.getElementById("ad-request-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1108,7 +1158,8 @@ export default function AdsPage() {
     event.preventDefault();
     setNotice(null);
 
-    const validationError = validateForm(form);
+    const receiptOnlyUpdate = Boolean(editingAd && canUpdateReceipt(editingAd));
+    const validationError = receiptOnlyUpdate ? validateReceiptForm(form) : validateForm(form);
     if (validationError) {
       setNotice({ tone: "error", text: validationError });
       return;
@@ -1117,17 +1168,27 @@ export default function AdsPage() {
     const token = getStoredToken();
     const store = me?.stores[0];
 
-    if (!token || !store) {
+    if (!token || (!store && !editingAd)) {
       setNotice({ tone: "error", text: "لم يتم العثور على متجر مرتبط بالحساب." });
       return;
     }
 
     setSaving(true);
     try {
-      if (editingAd) {
+      if (editingAd && receiptOnlyUpdate) {
+        const hadReceipt = Boolean(receiptUrl(editingAd));
+        await tajerApi.updateAdReceipt(token, editingAd.id, form.receipt_image_url.trim());
+        setNotice({
+          tone: "success",
+          text: hadReceipt
+            ? "تم تحديث الإيصال وإرساله للإدارة للمراجعة."
+            : "تم رفع الإيصال وإرساله للإدارة للمراجعة.",
+        });
+      } else if (editingAd) {
         await tajerApi.updateAd(token, editingAd.id, payloadFromForm(form));
         setNotice({ tone: "success", text: "تم إرسال الإعلان للمراجعة مرة أخرى." });
       } else {
+        if (!store) throw new Error("missing_store");
         await tajerApi.createAd(token, store.id, payloadFromForm(form));
         setNotice({ tone: "success", text: "تم إرسال طلب الإعلان للمراجعة." });
       }
@@ -1135,10 +1196,12 @@ export default function AdsPage() {
       setForm(initialForm);
       setEditingAd(null);
       await reload();
-    } catch {
+    } catch (error) {
       setNotice({
         tone: "error",
-        text: "تعذر إرسال الإعلان للمراجعة. راجع الحقول وحاول مرة أخرى.",
+        text: receiptOnlyUpdate
+          ? receiptUpdateErrorMessage(error)
+          : "تعذر إرسال الإعلان للمراجعة. راجع الحقول وحاول مرة أخرى.",
       });
     } finally {
       setSaving(false);
@@ -1198,10 +1261,14 @@ export default function AdsPage() {
                     </div>
                     <div>
                       <h2 className="text-xl font-black text-navy-900">
-                        {editingAd ? "تعديل طلب الإعلان" : "طلب إعلان جديد"}
+                        {isReceiptOnlyEditing ? "إضافة / تحديث الإيصال" : editingAd ? "تعديل طلب الإعلان" : "طلب إعلان جديد"}
                       </h2>
                       <p className="mt-1 text-sm text-ink-700/60">
-                        {editingAd ? "سيعود الإعلان للمراجعة بعد الإرسال." : "سيتم إرساله للمراجعة قبل الظهور."}
+                        {isReceiptOnlyEditing
+                          ? "سيتم إرسال الإيصال للإدارة لاعتماد الدفع دون تغيير مراجعة الإعلان."
+                          : editingAd
+                            ? "سيعود الإعلان للمراجعة بعد الإرسال."
+                            : "سيتم إرساله للمراجعة قبل الظهور."}
                       </p>
                     </div>
                   </div>
@@ -1229,102 +1296,132 @@ export default function AdsPage() {
                 ) : null}
 
                 <div className="mt-5 space-y-4">
-                  <div>
-                    <label className="text-sm font-bold text-ink-700">
-                      عنوان الإعلان <span className="text-err">*</span>
-                    </label>
-                    <input
-                      className={fieldClass("title")}
-                      placeholder="مثال: عرض خاص للديوانيات"
-                      value={form.title}
-                      onChange={(e) => setField("title", e.target.value)}
-                      required
-                    />
-                  </div>
+                  {isReceiptOnlyEditing ? (
+                    <>
+                      <div className="rounded-2xl border border-gold-500/25 bg-gold-500/10 p-4">
+                        <p className="text-sm font-black text-navy-900">تحديث الإيصال فقط</p>
+                        <p className="mt-2 text-sm leading-7 text-ink-700/70">
+                          لن يتم تعديل عنوان الإعلان أو وصفه أو حالة المراجعة. ستراجع الإدارة الإيصال لاعتماد الدفع.
+                        </p>
+                      </div>
 
-                  <div>
-                    <label className="text-sm font-bold text-ink-700">التصنيف المستهدف</label>
-                    <select
-                      className={fieldClass("target_category")}
-                      value={form.target_category}
-                      onChange={(e) => setField("target_category", e.target.value)}
-                    >
-                      {marketplaceCategories.map((category) => (
-                        <option key={category}>{category}</option>
-                      ))}
-                    </select>
-                  </div>
+                      <div>
+                        <label className="text-sm font-bold text-ink-700">
+                          رابط صورة الإيصال <span className="text-err">*</span>
+                        </label>
+                        <input
+                          className={fieldClass("receipt_image_url")}
+                          placeholder="https://example.com/receipt.jpg"
+                          value={form.receipt_image_url}
+                          onChange={(e) => setField("receipt_image_url", e.target.value)}
+                          required
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="text-sm font-bold text-ink-700">
+                          عنوان الإعلان <span className="text-err">*</span>
+                        </label>
+                        <input
+                          className={fieldClass("title")}
+                          placeholder="مثال: عرض خاص للديوانيات"
+                          value={form.title}
+                          onChange={(e) => setField("title", e.target.value)}
+                          required
+                        />
+                      </div>
 
-                  <div>
-                    <label className="text-sm font-bold text-ink-700">المبلغ المدفوع أو المقترح</label>
-                    <input
-                      className={fieldClass("amount_paid")}
-                      inputMode="decimal"
-                      placeholder="مثال: 250"
-                      value={form.amount_paid}
-                      onChange={(e) => setField("amount_paid", e.target.value)}
-                    />
-                  </div>
+                      <div>
+                        <label className="text-sm font-bold text-ink-700">التصنيف المستهدف</label>
+                        <select
+                          className={fieldClass("target_category")}
+                          value={form.target_category}
+                          onChange={(e) => setField("target_category", e.target.value)}
+                        >
+                          {marketplaceCategories.map((category) => (
+                            <option key={category}>{category}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-bold text-ink-700">تاريخ بداية الإعلان المقترح</label>
-                      <input
-                        className={fieldClass("requested_start_date")}
-                        type="date"
-                        value={form.requested_start_date}
-                        onChange={(e) => setField("requested_start_date", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-bold text-ink-700">تاريخ نهاية الإعلان المقترح</label>
-                      <input
-                        className={fieldClass("requested_end_date")}
-                        type="date"
-                        value={form.requested_end_date}
-                        onChange={(e) => setField("requested_end_date", e.target.value)}
-                      />
-                    </div>
-                  </div>
+                      <div>
+                        <label className="text-sm font-bold text-ink-700">المبلغ المدفوع أو المقترح</label>
+                        <input
+                          className={fieldClass("amount_paid")}
+                          inputMode="decimal"
+                          placeholder="مثال: 250"
+                          value={form.amount_paid}
+                          onChange={(e) => setField("amount_paid", e.target.value)}
+                        />
+                      </div>
 
-                  <div>
-                    <label className="text-sm font-bold text-ink-700">رابط صورة الإعلان</label>
-                    <input
-                      className={fieldClass("image_url")}
-                      placeholder="https://example.com/ad.jpg"
-                      value={form.image_url}
-                      onChange={(e) => setField("image_url", e.target.value)}
-                    />
-                  </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="text-sm font-bold text-ink-700">تاريخ بداية الإعلان المقترح</label>
+                          <input
+                            className={fieldClass("requested_start_date")}
+                            type="date"
+                            value={form.requested_start_date}
+                            onChange={(e) => setField("requested_start_date", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-bold text-ink-700">تاريخ نهاية الإعلان المقترح</label>
+                          <input
+                            className={fieldClass("requested_end_date")}
+                            type="date"
+                            value={form.requested_end_date}
+                            onChange={(e) => setField("requested_end_date", e.target.value)}
+                          />
+                        </div>
+                      </div>
 
-                  <div>
-                    <label className="text-sm font-bold text-ink-700">رابط صورة الإيصال</label>
-                    <input
-                      className={fieldClass("receipt_image_url")}
-                      placeholder="https://example.com/receipt.jpg"
-                      value={form.receipt_image_url}
-                      onChange={(e) => setField("receipt_image_url", e.target.value)}
-                    />
-                  </div>
+                      <div>
+                        <label className="text-sm font-bold text-ink-700">رابط صورة الإعلان</label>
+                        <input
+                          className={fieldClass("image_url")}
+                          placeholder="https://example.com/ad.jpg"
+                          value={form.image_url}
+                          onChange={(e) => setField("image_url", e.target.value)}
+                        />
+                      </div>
 
-                  <div>
-                    <label className="text-sm font-bold text-ink-700">وصف الإعلان</label>
-                    <textarea
-                      className={`${fieldClass("description")} min-h-28`}
-                      placeholder="اكتب العرض، المدة، أو سبب تميز الإعلان"
-                      value={form.description}
-                      onChange={(e) => setField("description", e.target.value)}
-                    />
-                  </div>
+                      <div>
+                        <label className="text-sm font-bold text-ink-700">رابط صورة الإيصال</label>
+                        <input
+                          className={fieldClass("receipt_image_url")}
+                          placeholder="https://example.com/receipt.jpg"
+                          value={form.receipt_image_url}
+                          onChange={(e) => setField("receipt_image_url", e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-bold text-ink-700">وصف الإعلان</label>
+                        <textarea
+                          className={`${fieldClass("description")} min-h-28`}
+                          placeholder="اكتب العرض، المدة، أو سبب تميز الإعلان"
+                          value={form.description}
+                          onChange={(e) => setField("description", e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <button disabled={saving} className="btn-primary mt-5 inline-flex w-full items-center justify-center gap-2 px-6 py-3 disabled:opacity-60">
                   <Send size={17} />
                   {saving
                     ? "جاري الإرسال..."
-                    : editingAd
-                      ? "إرسال الإعلان للمراجعة مرة أخرى"
-                      : "إرسال طلب الإعلان للمراجعة"}
+                    : isReceiptOnlyEditing
+                      ? editingAdHasReceipt
+                        ? "تحديث الإيصال"
+                        : "رفع الإيصال"
+                      : editingAd
+                        ? "إرسال الإعلان للمراجعة مرة أخرى"
+                        : "إرسال طلب الإعلان للمراجعة"}
                 </button>
 
                 {notice ? (

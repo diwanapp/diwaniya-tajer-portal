@@ -37,6 +37,11 @@ export type MerchantProduct = {
   review_note?: string | null;
 };
 
+export type MerchantAdAnalytics = {
+  available: boolean;
+  reason?: string | null;
+};
+
 export type MerchantAd = {
   id: string;
   merchant_store_id: string;
@@ -64,17 +69,25 @@ export type MerchantAd = {
   payment_duration_days?: number | null;
   payment_placement_screen?: string | null;
   payment_requested_at?: string | null;
+  receipt_uploaded_at?: string | null;
   payment_verified_at?: string | null;
   payment_rejected_at?: string | null;
   publication_status?: string | null;
+  publication_version?: number | null;
   effective_delivery_status?: string | null;
   next_action?: string | null;
   allowed_actions?: string[] | null;
   blockers?: string[] | null;
   placement_screen?: string | null;
   placement_slot?: string | null;
+  placement_priority?: number | null;
   placement_starts_at?: string | null;
   placement_ends_at?: string | null;
+  published_at?: string | null;
+  paused_at?: string | null;
+  ended_at?: string | null;
+  cancelled_at?: string | null;
+  analytics?: MerchantAdAnalytics | null;
   created_at?: string | null;
   updated_at?: string | null;
 };

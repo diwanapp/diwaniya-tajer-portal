@@ -11,6 +11,18 @@ const API_BASE_URL =
 
 export const TAJER_TOKEN_KEY = "diwaniya_tajer_token";
 
+export class TajerApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(status: number, message: string, code?: string) {
+    super(message);
+    this.name = "TajerApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export function getStoredToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(TAJER_TOKEN_KEY);
@@ -43,11 +55,12 @@ async function request<T>(
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
+    const error = data?.detail?.error;
     const message =
-      data?.detail?.error?.message ||
+      error?.message ||
       data?.detail?.message ||
       "تعذر تنفيذ الطلب. حاول مرة أخرى.";
-    throw new Error(message);
+    throw new TajerApiError(response.status, message, error?.code || data?.detail?.code);
   }
 
   return data as T;
@@ -175,6 +188,14 @@ export const tajerApi = {
       method: "PATCH",
       token,
       body: JSON.stringify(payload),
+    });
+  },
+
+  updateAdReceipt(token: string, adId: string, receiptUrl: string) {
+    return request<MerchantAd>(`/merchants/ads/${adId}/receipt`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ receipt_url: receiptUrl }),
     });
   },
 };
