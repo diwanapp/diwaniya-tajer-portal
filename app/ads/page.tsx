@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertCircle,
@@ -27,7 +27,6 @@ import {
   Send,
   Target,
   TimerReset,
-  XCircle,
 } from "lucide-react";
 import { marketplaceCategories, getStoredToken, TajerApiError, tajerApi } from "@/lib/api";
 import type { MerchantAd, MerchantMeResponse } from "@/lib/types";
@@ -201,6 +200,16 @@ function formatDate(value?: string | null) {
   return new Intl.DateTimeFormat("ar-SA", {
     dateStyle: "medium",
   }).format(date);
+}
+
+function formatDateRange(startValue?: string | null, endValue?: string | null) {
+  const start = formatDate(startValue);
+  const end = formatDate(endValue);
+
+  if (start === "—" && end === "—") return "";
+  if (start === "—") return `حتى ${end}`;
+  if (end === "—") return `من ${start}`;
+  return `${start} - ${end}`;
 }
 
 function formatMoney(value?: string | number | null, currency = "SAR") {
@@ -392,16 +401,45 @@ function InfoTile({
   );
 }
 
+function FormSection({
+  title,
+  description,
+  icon: Icon,
+  children,
+  className = "",
+}: {
+  title: string;
+  description?: string;
+  icon: LucideIcon;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`rounded-xl border border-sand-400/25 bg-ivory-50/55 p-4 sm:p-5 ${className}`}>
+      <div className="mb-4 flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-gold-700 shadow-card">
+          <Icon size={19} />
+        </span>
+        <div>
+          <h3 className="text-base font-black text-navy-900">{title}</h3>
+          {description ? <p className="mt-1 text-xs leading-6 text-ink-700/60">{description}</p> : null}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 function SummaryCardItem({ label, value, icon: Icon }: SummaryCard) {
   return (
-    <div className="surface p-4">
+    <div className="surface p-3.5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold leading-6 text-ink-700/70">{label}</p>
-          <p className="num mt-1 text-3xl font-black text-navy-900">{value}</p>
+          <p className="num mt-0.5 text-2xl font-black text-navy-900">{value}</p>
         </div>
-        <div className="rounded-2xl bg-gold-500/12 p-2.5 text-gold-700">
-          <Icon size={20} />
+        <div className="rounded-xl bg-gold-500/12 p-2 text-gold-700">
+          <Icon size={18} />
         </div>
       </div>
     </div>
@@ -759,38 +797,49 @@ function AdCard({ ad, onEdit }: { ad: MerchantAd; onEdit: (ad: MerchantAd) => vo
   const image = fieldValue(ad.image_url);
   const receipt = receiptUrl(ad);
   const placement = [ad.placement_screen, ad.placement_slot].map(fieldValue).filter(Boolean).join(" · ") || "—";
-  const dateRange = [formatDate(ad.requested_start_date), formatDate(ad.requested_end_date)].join(" - ");
+  const dateRange = formatDateRange(ad.requested_start_date, ad.requested_end_date);
   const isEnded = publication === "ended" || publication === "cancelled";
   const actionNeeded = needsMerchantAction(ad);
+  const actionPanelClass = actionNeeded
+    ? "border-warn/25 bg-warn/10"
+    : "border-sand-400/25 bg-ivory-50";
 
   return (
-    <article className={`surface overflow-hidden p-4 transition hover:-translate-y-0.5 hover:shadow-glow ${actionNeeded ? "ring-2 ring-warn/15" : ""}`}>
-      <div className="grid gap-4 md:grid-cols-[168px_1fr]">
-        <div className="h-28 overflow-hidden rounded-2xl bg-navy-900 sm:aspect-video sm:h-auto md:h-full md:min-h-28">
-          {image && !imageFailed ? (
-            <img
-              src={image}
-              alt={ad.title}
-              className="h-full w-full object-cover"
-              loading="lazy"
-              onError={() => setImageFailed(true)}
-            />
-          ) : (
-            <div className="flex h-full min-h-28 items-center justify-center text-gold-500">
-              <ImageIcon size={30} />
-            </div>
-          )}
+    <article className={`surface overflow-hidden transition hover:-translate-y-0.5 hover:shadow-glow ${actionNeeded ? "ring-2 ring-warn/15" : ""}`}>
+      <div className="flex flex-col lg:flex-row" dir="ltr">
+        <div className="border-b border-sand-400/20 p-3 lg:w-[240px] lg:shrink-0 lg:border-b-0 lg:border-r xl:w-[270px]" dir="rtl">
+          <div className="aspect-video max-h-44 overflow-hidden rounded-xl bg-navy-900 lg:max-h-none">
+            {image && !imageFailed ? (
+              <img
+                src={image}
+                alt={ad.title}
+                className="h-full w-full object-cover"
+                loading="lazy"
+                onError={() => setImageFailed(true)}
+              />
+            ) : (
+              <div className="flex h-full min-h-32 flex-col items-center justify-center gap-2 px-4 text-center text-gold-500">
+                <ImageIcon size={30} />
+                <p className="text-xs font-black text-ivory-100">لا توجد صورة للإعلان</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 p-4" dir="rtl">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0">
-              <p className="text-xs font-black text-gold-700">طلب الإعلان</p>
-              <h3 className="mt-1 text-xl font-black leading-8 text-navy-900">{ad.title}</h3>
-              <p className="mt-1 text-sm text-ink-700/65">{ad.target_category || "كل التصنيفات"}</p>
-              <p className="mt-2 text-xs font-bold leading-6 text-ink-700/55 sm:hidden">
-                المدة: {dateRange}
+              <p className="text-xs font-black text-gold-700">طلب إعلان</p>
+              <h3 className="mt-1 break-words text-lg font-black leading-7 text-navy-900 sm:text-xl sm:leading-8">{ad.title}</h3>
+              <p className="mt-1 text-sm leading-6 text-ink-700/60">
+                {ad.target_category ? `التصنيف الإعلاني: ${ad.target_category}` : "التصنيف الإعلاني: كل التصنيفات"}
               </p>
+              {dateRange ? (
+                <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-black text-ink-700/55">
+                  <CalendarClock size={14} />
+                  {dateRange}
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               <StatusBadge label={labelFor(REVIEW_LABELS, review)} tone={reviewTone(review)} />
@@ -799,28 +848,28 @@ function AdCard({ ad, onEdit }: { ad: MerchantAd; onEdit: (ad: MerchantAd) => vo
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
-            <div className="rounded-2xl bg-ivory-50 p-2.5 sm:p-3">
-              <p className="text-xs font-black text-ink-700/55">الخطوة التالية</p>
-              <p className="mt-1 text-sm font-black text-navy-900">{action.label}</p>
-              <p className="mt-1 hidden text-xs leading-6 text-ink-700/60 sm:block">{action.detail}</p>
-            </div>
-            <div className="hidden rounded-2xl bg-ivory-50 p-3 sm:block">
-              <p className="text-xs font-black text-ink-700/55">مدة الإعلان المقترحة</p>
-              <p className="mt-1 text-sm font-black text-navy-900">{dateRange}</p>
-              <p className="mt-1 hidden text-xs leading-6 text-ink-700/60 sm:block">
-                {placement !== "—" ? `مكان الظهور: ${placement}` : "مكان الظهور يحدده اعتماد الإدارة."}
-              </p>
+          <div className={`mt-3 rounded-xl border p-3 ${actionPanelClass}`}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-black text-ink-700/55">الخطوة التالية</p>
+                <p className="mt-1 text-base font-black text-navy-900">{action.label}</p>
+                <p className="mt-1 text-sm leading-7 text-ink-700/70">{action.detail}</p>
+              </div>
+              {actionNeeded ? (
+                <span className="inline-flex w-fit shrink-0 items-center rounded-full bg-white px-3 py-1 text-xs font-black text-warn">
+                  يتطلب إجراء
+                </span>
+              ) : null}
             </div>
           </div>
 
           {isChangesRequested(ad) ? (
-            <div className="mt-4 rounded-2xl border border-warn/25 bg-warn/10 p-3 sm:p-4">
+            <div className="mt-3 rounded-xl border border-warn/25 bg-warn/10 p-3">
               <div className="flex items-start gap-3">
                 <AlertCircle className="mt-1 shrink-0 text-warn" size={20} />
                 <div>
                   <h4 className="font-black text-navy-900">يتطلب تعديل من التاجر</h4>
-                  <p className="mt-2 hidden text-sm leading-7 text-ink-700/75 sm:block">
+                  <p className="mt-2 text-sm leading-7 text-ink-700/75">
                     راجعت الإدارة إعلانك وطلبت تعديلات قبل اعتماده.
                   </p>
                 </div>
@@ -837,27 +886,22 @@ function AdCard({ ad, onEdit }: { ad: MerchantAd; onEdit: (ad: MerchantAd) => vo
               ) : null}
 
               {ad.review_note ? (
-                <div className="mt-4 rounded-xl bg-white p-3">
+                <div className="mt-3 rounded-xl bg-white p-3">
                   <p className="text-xs font-black text-ink-700/60">ملاحظة الإدارة</p>
                   <p className="mt-1 line-clamp-2 text-sm leading-7 text-navy-900">{ad.review_note}</p>
                 </div>
               ) : null}
             </div>
-          ) : ad.review_note ? (
-            <div className="mt-4 rounded-2xl border border-sand-400/25 bg-ivory-50 p-4">
-              <p className="text-xs font-black text-ink-700/60">ملاحظة الإدارة</p>
-              <p className="mt-2 text-sm leading-7 text-navy-900">{ad.review_note}</p>
-            </div>
           ) : null}
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             {action.kind === "edit" || action.kind === "receipt" ? (
               <button type="button" onClick={() => onEdit(ad)} className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm">
                 {action.kind === "receipt" ? <Receipt size={16} /> : <PencilLine size={16} />}
                 {action.label}
               </button>
             ) : action.kind === "details" ? (
-              <button type="button" onClick={() => setExpanded(true)} className="btn-secondary inline-flex items-center gap-2 px-4 py-2 text-sm font-black">
+              <button type="button" onClick={() => setExpanded(true)} className="inline-flex items-center gap-2 rounded-full border border-sand-400/35 px-4 py-2 text-sm font-black text-navy-900">
                 <FileText size={16} />
                 {action.label}
               </button>
@@ -881,11 +925,18 @@ function AdCard({ ad, onEdit }: { ad: MerchantAd; onEdit: (ad: MerchantAd) => vo
       </div>
 
       {expanded ? (
-        <div className="mt-5 border-t border-sand-400/20 pt-5">
+        <div className="border-t border-sand-400/20 p-4 sm:p-5">
           {ad.description ? (
             <div className="mb-5 rounded-2xl bg-ivory-50 p-4">
               <p className="text-xs font-black text-ink-700/60">وصف الإعلان</p>
               <p className="mt-2 text-sm leading-7 text-ink-700/75">{ad.description}</p>
+            </div>
+          ) : null}
+
+          {ad.review_note && !isChangesRequested(ad) ? (
+            <div className="mb-5 rounded-2xl bg-ivory-50 p-4">
+              <p className="text-xs font-black text-ink-700/60">ملاحظة الإدارة</p>
+              <p className="mt-2 text-sm leading-7 text-navy-900">{ad.review_note}</p>
             </div>
           ) : null}
 
@@ -1000,6 +1051,7 @@ export default function AdsPage() {
   const [ads, setAds] = useState<MerchantAd[]>([]);
   const [form, setForm] = useState<AdForm>(initialForm);
   const [editingAd, setEditingAd] = useState<MerchantAd | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [activeFilter, setActiveFilter] = useState<AdFilterKey>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -1008,7 +1060,6 @@ export default function AdsPage() {
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const isReceiptOnlyEditing = editingAd ? canUpdateReceipt(editingAd) : false;
-  const editingAdHasReceipt = editingAd ? Boolean(receiptUrl(editingAd)) : false;
 
   async function reload() {
     const token = getStoredToken();
@@ -1040,6 +1091,10 @@ export default function AdsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (editingAd) setFormOpen(true);
+  }, [editingAd]);
+
   const highlightedFields = useMemo(() => {
     const fields = new Set<keyof AdForm>();
     if (!editingAd) return fields;
@@ -1063,23 +1118,14 @@ export default function AdsPage() {
   }, [editingAd]);
 
   const summaryCards = useMemo<SummaryCard[]>(() => {
-    const reviewCount = (status: string) => ads.filter((ad) => moderationState(ad) === status).length;
     const paymentCount = (status: string) => ads.filter((ad) => paymentStatus(ad) === status).length;
     const publicationCount = (statuses: string[]) => ads.filter((ad) => statuses.includes(publicationStatus(ad))).length;
 
     return [
       { label: "إجمالي الإعلانات", value: ads.length, icon: Megaphone },
-      { label: "قيد المراجعة", value: reviewCount("pending_review"), icon: Clock3 },
-      { label: "يتطلب تعديل", value: reviewCount("changes_requested"), icon: PencilLine },
-      { label: "معتمد", value: reviewCount("approved"), icon: CheckCircle2 },
-      { label: "مرفوض", value: reviewCount("rejected"), icon: XCircle },
+      { label: "يتطلب إجراء", value: ads.filter(needsMerchantAction).length, icon: AlertCircle },
       { label: "بانتظار الدفع", value: paymentCount("payment_requested"), icon: Banknote },
-      { label: "الإيصال مرفوع", value: paymentCount("receipt_uploaded"), icon: Receipt },
-      { label: "الدفع معتمد", value: paymentCount("verified"), icon: BadgeCheck },
-      { label: "مجدول", value: publicationCount(["scheduled"]), icon: CalendarClock },
       { label: "ظاهر الآن", value: publicationCount(["live"]), icon: Eye },
-      { label: "متوقف مؤقتًا", value: publicationCount(["paused"]), icon: TimerReset },
-      { label: "منتهي / ملغي", value: publicationCount(["ended", "cancelled"]), icon: FileText },
     ];
   }, [ads]);
 
@@ -1121,6 +1167,7 @@ export default function AdsPage() {
 
   function startEdit(ad: MerchantAd) {
     setEditingAd(ad);
+    setFormOpen(true);
     setForm(formFromAd(ad));
     setNotice({
       tone: "info",
@@ -1135,8 +1182,26 @@ export default function AdsPage() {
 
   function cancelEdit() {
     setEditingAd(null);
+    setFormOpen(false);
     setForm(initialForm);
     setNotice(null);
+  }
+
+  function openNewRequestForm() {
+    setEditingAd(null);
+    setForm(initialForm);
+    setNotice(null);
+    setFormOpen(true);
+    window.requestAnimationFrame(() => {
+      document.getElementById("ad-request-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function closeRequestForm() {
+    setEditingAd(null);
+    setForm(initialForm);
+    setNotice(null);
+    setFormOpen(false);
   }
 
   async function refreshAds() {
@@ -1195,6 +1260,7 @@ export default function AdsPage() {
 
       setForm(initialForm);
       setEditingAd(null);
+      setFormOpen(false);
       await reload();
     } catch (error) {
       setNotice({
@@ -1246,17 +1312,18 @@ export default function AdsPage() {
               </div>
             </section>
 
-            <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {summaryCards.map((card) => (
                 <SummaryCardItem key={card.label} {...card} />
               ))}
             </section>
 
-            <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-              <form id="ad-request-form" onSubmit={submit} className="surface p-5 lg:sticky lg:top-24 lg:self-start">
-                <div className="flex items-start justify-between gap-3">
+            <section className="mt-6 space-y-8">
+              {formOpen ? (
+              <form id="ad-request-form" onSubmit={submit} className="surface overflow-hidden p-0">
+                <div className="flex items-start justify-between gap-3 border-b border-sand-400/20 bg-white px-4 py-5 sm:px-6">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-2xl bg-gold-500/12 p-3 text-gold-700">
+                    <div className="rounded-xl bg-gold-500/12 p-3 text-gold-700">
                       {editingAd ? <PencilLine size={22} /> : <Plus size={22} />}
                     </div>
                     <div>
@@ -1272,164 +1339,227 @@ export default function AdsPage() {
                       </p>
                     </div>
                   </div>
-                  {editingAd ? (
-                    <button type="button" onClick={cancelEdit} className="rounded-full border border-sand-400/40 px-3 py-2 text-xs font-black text-navy-900">
-                      إلغاء
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    onClick={editingAd ? cancelEdit : closeRequestForm}
+                    className="rounded-full border border-sand-400/40 px-3 py-2 text-xs font-black text-navy-900"
+                  >
+                    {editingAd ? "إلغاء" : "إغلاق النموذج"}
+                  </button>
                 </div>
 
-                {editingAd && requestedChanges(editingAd).length > 0 ? (
-                  <div className="mt-5 rounded-2xl border border-warn/25 bg-warn/10 p-4">
-                    <p className="text-sm font-black text-navy-900">التعديلات المطلوبة</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {requestedChanges(editingAd).map((change) => (
-                        <span key={change} className="rounded-full bg-white px-3 py-1 text-xs font-black text-warn">
-                          {REQUIRED_CHANGE_LABELS[change] || "أخرى"}
-                        </span>
-                      ))}
+                <div className="p-4 sm:p-6">
+                  {editingAd && requestedChanges(editingAd).length > 0 ? (
+                    <div className="mb-4 rounded-xl border border-warn/25 bg-warn/10 p-4">
+                      <p className="text-sm font-black text-navy-900">التعديلات المطلوبة</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {requestedChanges(editingAd).map((change) => (
+                          <span key={change} className="rounded-full bg-white px-3 py-1 text-xs font-black text-warn">
+                            {REQUIRED_CHANGE_LABELS[change] || "أخرى"}
+                          </span>
+                        ))}
+                      </div>
+                      {editingAd.review_note ? (
+                        <p className="mt-3 text-sm leading-7 text-ink-700/75">{editingAd.review_note}</p>
+                      ) : null}
                     </div>
-                    {editingAd.review_note ? (
-                      <p className="mt-3 text-sm leading-7 text-ink-700/75">{editingAd.review_note}</p>
-                    ) : null}
-                  </div>
-                ) : null}
+                  ) : null}
 
-                <div className="mt-5 space-y-4">
                   {isReceiptOnlyEditing ? (
-                    <>
-                      <div className="rounded-2xl border border-gold-500/25 bg-gold-500/10 p-4">
-                        <p className="text-sm font-black text-navy-900">تحديث الإيصال فقط</p>
-                        <p className="mt-2 text-sm leading-7 text-ink-700/70">
-                          لن يتم تعديل عنوان الإعلان أو وصفه أو حالة المراجعة. ستراجع الإدارة الإيصال لاعتماد الدفع.
-                        </p>
-                      </div>
+                    <FormSection
+                      title="إيصال الدفع"
+                      description="هذا المسار يحدّث رابط الإيصال فقط دون تعديل محتوى الإعلان."
+                      icon={Receipt}
+                    >
+                      <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+                        <div className="rounded-xl border border-gold-500/25 bg-white p-4">
+                          <p className="text-sm font-black text-navy-900">تحديث الإيصال فقط</p>
+                          <p className="mt-2 text-sm leading-7 text-ink-700/70">
+                            لن يتم تعديل عنوان الإعلان أو وصفه أو حالة المراجعة. ستراجع الإدارة الإيصال لاعتماد الدفع.
+                          </p>
+                        </div>
 
-                      <div>
-                        <label className="text-sm font-bold text-ink-700">
-                          رابط صورة الإيصال <span className="text-err">*</span>
-                        </label>
-                        <input
-                          className={fieldClass("receipt_image_url")}
-                          placeholder="https://example.com/receipt.jpg"
-                          value={form.receipt_image_url}
-                          onChange={(e) => setField("receipt_image_url", e.target.value)}
-                          required
-                        />
+                        <div>
+                          <label className="text-sm font-bold text-ink-700">
+                            رابط صورة الإيصال <span className="text-err">*</span>
+                          </label>
+                          <input
+                            className={fieldClass("receipt_image_url")}
+                            placeholder="https://example.com/receipt.jpg"
+                            value={form.receipt_image_url}
+                            onChange={(e) => setField("receipt_image_url", e.target.value)}
+                            required
+                          />
+                        </div>
                       </div>
-                    </>
+                    </FormSection>
                   ) : (
-                    <>
-                      <div>
-                        <label className="text-sm font-bold text-ink-700">
-                          عنوان الإعلان <span className="text-err">*</span>
-                        </label>
-                        <input
-                          className={fieldClass("title")}
-                          placeholder="مثال: عرض خاص للديوانيات"
-                          value={form.title}
-                          onChange={(e) => setField("title", e.target.value)}
-                          required
-                        />
-                      </div>
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+                      <FormSection
+                        title="أساسيات الإعلان"
+                        description="العنوان والتصنيف والوصف الذي سيساعد الإدارة على فهم الإعلان."
+                        icon={Megaphone}
+                        className="xl:row-span-2"
+                      >
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">
+                              عنوان الإعلان <span className="text-err">*</span>
+                            </label>
+                            <input
+                              className={fieldClass("title")}
+                              placeholder="مثال: عرض خاص للديوانيات"
+                              value={form.title}
+                              onChange={(e) => setField("title", e.target.value)}
+                              required
+                            />
+                          </div>
 
-                      <div>
-                        <label className="text-sm font-bold text-ink-700">التصنيف المستهدف</label>
-                        <select
-                          className={fieldClass("target_category")}
-                          value={form.target_category}
-                          onChange={(e) => setField("target_category", e.target.value)}
-                        >
-                          {marketplaceCategories.map((category) => (
-                            <option key={category}>{category}</option>
-                          ))}
-                        </select>
-                      </div>
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">التصنيف الإعلاني</label>
+                            <select
+                              className={fieldClass("target_category")}
+                              value={form.target_category}
+                              onChange={(e) => setField("target_category", e.target.value)}
+                            >
+                              {marketplaceCategories.map((category) => (
+                                <option key={category}>{category}</option>
+                              ))}
+                            </select>
+                            <p className="mt-2 text-xs leading-6 text-ink-700/55">
+                              اختر أقرب تصنيف متاح لطبيعة الإعلان.
+                            </p>
+                          </div>
 
-                      <div>
-                        <label className="text-sm font-bold text-ink-700">المبلغ المدفوع أو المقترح</label>
-                        <input
-                          className={fieldClass("amount_paid")}
-                          inputMode="decimal"
-                          placeholder="مثال: 250"
-                          value={form.amount_paid}
-                          onChange={(e) => setField("amount_paid", e.target.value)}
-                        />
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <label className="text-sm font-bold text-ink-700">تاريخ بداية الإعلان المقترح</label>
-                          <input
-                            className={fieldClass("requested_start_date")}
-                            type="date"
-                            value={form.requested_start_date}
-                            onChange={(e) => setField("requested_start_date", e.target.value)}
-                          />
+                          <div className="lg:col-span-2">
+                            <label className="text-sm font-bold text-ink-700">وصف الإعلان</label>
+                            <textarea
+                              className={`${fieldClass("description")} min-h-36`}
+                              placeholder="اكتب العرض، المدة، أو سبب تميز الإعلان"
+                              value={form.description}
+                              onChange={(e) => setField("description", e.target.value)}
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="text-sm font-bold text-ink-700">تاريخ نهاية الإعلان المقترح</label>
-                          <input
-                            className={fieldClass("requested_end_date")}
-                            type="date"
-                            value={form.requested_end_date}
-                            onChange={(e) => setField("requested_end_date", e.target.value)}
-                          />
+                      </FormSection>
+
+                      <FormSection
+                        title="المدة والميزانية"
+                        description="اكتب المبلغ المقترح ومدة الظهور المطلوبة."
+                        icon={CalendarClock}
+                      >
+                        <div className="grid gap-4 sm:grid-cols-3">
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">المبلغ المدفوع أو المقترح</label>
+                            <input
+                              className={fieldClass("amount_paid")}
+                              inputMode="decimal"
+                              placeholder="مثال: 250"
+                              value={form.amount_paid}
+                              onChange={(e) => setField("amount_paid", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">تاريخ بداية الإعلان المقترح</label>
+                            <input
+                              className={fieldClass("requested_start_date")}
+                              type="date"
+                              value={form.requested_start_date}
+                              onChange={(e) => setField("requested_start_date", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">تاريخ نهاية الإعلان المقترح</label>
+                            <input
+                              className={fieldClass("requested_end_date")}
+                              type="date"
+                              value={form.requested_end_date}
+                              onChange={(e) => setField("requested_end_date", e.target.value)}
+                            />
+                          </div>
                         </div>
-                      </div>
+                      </FormSection>
 
-                      <div>
-                        <label className="text-sm font-bold text-ink-700">رابط صورة الإعلان</label>
-                        <input
-                          className={fieldClass("image_url")}
-                          placeholder="https://example.com/ad.jpg"
-                          value={form.image_url}
-                          onChange={(e) => setField("image_url", e.target.value)}
-                        />
-                      </div>
+                      <FormSection
+                        title="الملفات والروابط"
+                        description="أضف روابط الصورة والإيصال عند توفرها."
+                        icon={ImageIcon}
+                      >
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">رابط صورة الإعلان</label>
+                            <input
+                              className={fieldClass("image_url")}
+                              placeholder="https://example.com/ad.jpg"
+                              value={form.image_url}
+                              onChange={(e) => setField("image_url", e.target.value)}
+                            />
+                          </div>
 
-                      <div>
-                        <label className="text-sm font-bold text-ink-700">رابط صورة الإيصال</label>
-                        <input
-                          className={fieldClass("receipt_image_url")}
-                          placeholder="https://example.com/receipt.jpg"
-                          value={form.receipt_image_url}
-                          onChange={(e) => setField("receipt_image_url", e.target.value)}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-bold text-ink-700">وصف الإعلان</label>
-                        <textarea
-                          className={`${fieldClass("description")} min-h-28`}
-                          placeholder="اكتب العرض، المدة، أو سبب تميز الإعلان"
-                          value={form.description}
-                          onChange={(e) => setField("description", e.target.value)}
-                        />
-                      </div>
-                    </>
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">رابط صورة الإيصال</label>
+                            <input
+                              className={fieldClass("receipt_image_url")}
+                              placeholder="https://example.com/receipt.jpg"
+                              value={form.receipt_image_url}
+                              onChange={(e) => setField("receipt_image_url", e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </FormSection>
+                    </div>
                   )}
                 </div>
 
-                <button disabled={saving} className="btn-primary mt-5 inline-flex w-full items-center justify-center gap-2 px-6 py-3 disabled:opacity-60">
-                  <Send size={17} />
-                  {saving
-                    ? "جاري الإرسال..."
-                    : isReceiptOnlyEditing
-                      ? editingAdHasReceipt
+                <div className="border-t border-sand-400/20 bg-white px-4 py-4 sm:px-6">
+                  <button disabled={saving} className="btn-primary inline-flex w-full items-center justify-center gap-2 px-6 py-3 disabled:opacity-60">
+                    <Send size={17} />
+                    {saving
+                      ? "جاري الإرسال..."
+                      : isReceiptOnlyEditing
                         ? "تحديث الإيصال"
-                        : "رفع الإيصال"
-                      : editingAd
-                        ? "إرسال الإعلان للمراجعة مرة أخرى"
-                        : "إرسال طلب الإعلان للمراجعة"}
-                </button>
+                        : editingAd
+                          ? "إرسال الإعلان للمراجعة مرة أخرى"
+                          : "إرسال طلب الإعلان للمراجعة"}
+                  </button>
 
-                {notice ? (
-                  <p className={`mt-4 rounded-2xl p-3 text-sm font-bold leading-7 ${noticeClass}`}>
-                    {notice.text}
-                  </p>
-                ) : null}
+                  {notice ? (
+                    <p className={`mt-4 rounded-xl p-3 text-sm font-bold leading-7 ${noticeClass}`}>
+                      {notice.text}
+                    </p>
+                  ) : null}
+                </div>
               </form>
+              ) : (
+                <div id="ad-request-form" className="surface overflow-hidden p-0">
+                  <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-navy-900 text-gold-500">
+                        <Plus size={22} />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-black text-navy-900">طلب إعلان جديد</h2>
+                        <p className="mt-1 max-w-2xl text-sm leading-7 text-ink-700/65">
+                          أرسل إعلانك للإدارة وتابع مراجعته وظهوره داخل التطبيق بعد الاعتماد.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={openNewRequestForm}
+                      className="btn-primary inline-flex shrink-0 items-center justify-center gap-2 px-5 py-3 text-sm"
+                    >
+                      <Plus size={17} />
+                      إنشاء طلب إعلان
+                    </button>
+                  </div>
+                  {notice ? (
+                    <p className={`mx-4 mb-4 rounded-xl p-3 text-sm font-bold leading-7 sm:mx-5 ${noticeClass}`}>
+                      {notice.text}
+                    </p>
+                  ) : null}
+                </div>
+              )}
 
               <div>
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
