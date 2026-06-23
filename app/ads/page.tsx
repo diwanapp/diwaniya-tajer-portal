@@ -28,8 +28,8 @@ import {
   Target,
   TimerReset,
 } from "lucide-react";
-import { marketplaceCategories, getStoredToken, TajerApiError, tajerApi } from "@/lib/api";
-import type { MerchantAd, MerchantMeResponse } from "@/lib/types";
+import { adCategoryFallbacks, getStoredToken, TajerApiError, tajerApi } from "@/lib/api";
+import type { AdCategoryOption, MerchantAd, MerchantMeResponse } from "@/lib/types";
 import { TajerShell } from "@/components/tajer-shell";
 import { AuthGuard } from "@/components/auth-guard";
 import { LoadingState } from "@/components/loading-state";
@@ -72,9 +72,11 @@ type SummaryCard = {
 type AdFilterKey = "all" | "action" | "pending" | "payment" | "scheduled" | "live" | "paused" | "ended" | "rejected";
 type AdSortKey = "newest" | "oldest" | "action_first" | "live_first" | "scheduled_first";
 
+const DEFAULT_AD_CATEGORY = "other";
+
 const initialForm: AdForm = {
   title: "",
-  target_category: "بقالة",
+  target_category: DEFAULT_AD_CATEGORY,
   amount_paid: "",
   image_url: "",
   receipt_image_url: "",
@@ -164,6 +166,23 @@ const CHANGE_FIELDS: Record<string, Array<keyof AdForm>> = {
 
 function fieldValue(value?: string | number | null) {
   return value === undefined || value === null ? "" : String(value).trim();
+}
+
+function isKnownAdCategory(value: string | null | undefined, categories: AdCategoryOption[]) {
+  const clean = fieldValue(value);
+  return Boolean(clean && categories.some((category) => category.key === clean));
+}
+
+function adCategoryLabel(value: string | null | undefined, categories: AdCategoryOption[]) {
+  const clean = fieldValue(value);
+  if (!clean) return "كل التصنيفات";
+  return categories.find((category) => category.key === clean || category.label === clean)?.label || clean;
+}
+
+function adCategoryOptionsForForm(categories: AdCategoryOption[], currentValue: string) {
+  const clean = fieldValue(currentValue);
+  if (!clean || isKnownAdCategory(clean, categories)) return categories;
+  return [...categories, { key: clean, label: clean }];
 }
 
 function moderationState(ad: MerchantAd) {
@@ -302,7 +321,7 @@ function matchesFilter(ad: MerchantAd, filter: AdFilterKey) {
   return true;
 }
 
-function searchableAdText(ad: MerchantAd) {
+function searchableAdText(ad: MerchantAd, categories: AdCategoryOption[]) {
   const review = moderationState(ad);
   const payment = paymentStatus(ad);
   const publication = publicationStatus(ad);
@@ -310,7 +329,7 @@ function searchableAdText(ad: MerchantAd) {
 
   return [
     ad.title,
-    ad.target_category,
+    adCategoryLabel(ad.target_category, categories),
     labelFor(REVIEW_LABELS, review),
     labelFor(PAYMENT_LABELS, payment),
     labelFor(PUBLICATION_LABELS, publication),
@@ -481,8 +500,25 @@ function receiptUpdateErrorMessage(error: unknown) {
   return "تعذر تحديث الإيصال. حاول مرة أخرى.";
 }
 
-function payloadFromForm(form: AdForm) {
-  return {
+function adSubmitErrorMessage(error: unknown) {
+  if (error instanceof TajerApiError && error.status === 422) {
+    return "اختر تصنيفًا إعلانيًا صحيحًا.";
+  }
+
+  return "تعذر إرسال الإعلان للمراجعة. راجع الحقول وحاول مرة أخرى.";
+}
+
+function payloadFromForm(form: AdForm, categories: AdCategoryOption[], originalAd?: MerchantAd | null) {
+  const payload: {
+    title: string;
+    description?: string;
+    target_category?: string;
+    image_url?: string;
+    receipt_image_url?: string;
+    amount_paid?: string;
+    requested_start_date?: string;
+    requested_end_date?: string;
+  } = {
     title: form.title.trim(),
     description: form.description.trim() || undefined,
     target_category: form.target_category || undefined,
@@ -492,12 +528,24 @@ function payloadFromForm(form: AdForm) {
     requested_start_date: form.requested_start_date || undefined,
     requested_end_date: form.requested_end_date || undefined,
   };
+
+  const originalCategory = fieldValue(originalAd?.target_category);
+  if (
+    originalAd &&
+    originalCategory &&
+    form.target_category === originalCategory &&
+    !isKnownAdCategory(originalCategory, categories)
+  ) {
+    delete payload.target_category;
+  }
+
+  return payload;
 }
 
 function formFromAd(ad: MerchantAd): AdForm {
   return {
     title: fieldValue(ad.title),
-    target_category: fieldValue(ad.target_category) || "بقالة",
+    target_category: fieldValue(ad.target_category) || DEFAULT_AD_CATEGORY,
     amount_paid: fieldValue(ad.amount_paid),
     image_url: fieldValue(ad.image_url),
     receipt_image_url: receiptUrl(ad),
@@ -786,7 +834,15 @@ function PerformancePlaceholder({ ended }: { ended: boolean }) {
   );
 }
 
-function AdCard({ ad, onEdit }: { ad: MerchantAd; onEdit: (ad: MerchantAd) => void }) {
+function AdCard({
+  ad,
+  categoryOptions,
+  onEdit,
+}: {
+  ad: MerchantAd;
+  categoryOptions: AdCategoryOption[];
+  onEdit: (ad: MerchantAd) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const review = moderationState(ad);
@@ -798,6 +854,7 @@ function AdCard({ ad, onEdit }: { ad: MerchantAd; onEdit: (ad: MerchantAd) => vo
   const receipt = receiptUrl(ad);
   const placement = [ad.placement_screen, ad.placement_slot].map(fieldValue).filter(Boolean).join(" · ") || "—";
   const dateRange = formatDateRange(ad.requested_start_date, ad.requested_end_date);
+  const category = adCategoryLabel(ad.target_category, categoryOptions);
   const isEnded = publication === "ended" || publication === "cancelled";
   const actionNeeded = needsMerchantAction(ad);
   const actionPanelClass = actionNeeded
@@ -832,7 +889,7 @@ function AdCard({ ad, onEdit }: { ad: MerchantAd; onEdit: (ad: MerchantAd) => vo
               <p className="text-xs font-black text-gold-700">طلب إعلان</p>
               <h3 className="mt-1 break-words text-lg font-black leading-7 text-navy-900 sm:text-xl sm:leading-8">{ad.title}</h3>
               <p className="mt-1 text-sm leading-6 text-ink-700/60">
-                {ad.target_category ? `التصنيف الإعلاني: ${ad.target_category}` : "التصنيف الإعلاني: كل التصنيفات"}
+                {`التصنيف الإعلاني: ${category}`}
               </p>
               {dateRange ? (
                 <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-black text-ink-700/55">
@@ -1049,6 +1106,7 @@ function AdCard({ ad, onEdit }: { ad: MerchantAd; onEdit: (ad: MerchantAd) => vo
 export default function AdsPage() {
   const [me, setMe] = useState<MerchantMeResponse | null>(null);
   const [ads, setAds] = useState<MerchantAd[]>([]);
+  const [adCategories, setAdCategories] = useState<AdCategoryOption[]>(adCategoryFallbacks);
   const [form, setForm] = useState<AdForm>(initialForm);
   const [editingAd, setEditingAd] = useState<MerchantAd | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -1068,8 +1126,12 @@ export default function AdsPage() {
       return;
     }
 
-    const nextMe = await tajerApi.me(token);
+    const [nextMe, nextCategories] = await Promise.all([
+      tajerApi.me(token),
+      tajerApi.adCategories().catch(() => adCategoryFallbacks),
+    ]);
     setMe(nextMe);
+    setAdCategories(nextCategories.length > 0 ? nextCategories : adCategoryFallbacks);
 
     const store = nextMe.stores[0];
     if (store) {
@@ -1151,11 +1213,11 @@ export default function AdsPage() {
     const filtered = ads.filter((ad) => {
       if (!matchesFilter(ad, activeFilter)) return false;
       if (!query) return true;
-      return searchableAdText(ad).includes(query);
+      return searchableAdText(ad, adCategories).includes(query);
     });
 
     return sortedAds(filtered, sortKey);
-  }, [activeFilter, ads, searchTerm, sortKey]);
+  }, [activeFilter, adCategories, ads, searchTerm, sortKey]);
 
   function fieldClass(field: keyof AdForm) {
     return `input mt-2 ${highlightedFields.has(field) ? "border-warn bg-warn/5 ring-2 ring-warn/20" : ""}`;
@@ -1250,11 +1312,11 @@ export default function AdsPage() {
             : "تم رفع الإيصال وإرساله للإدارة للمراجعة.",
         });
       } else if (editingAd) {
-        await tajerApi.updateAd(token, editingAd.id, payloadFromForm(form));
+        await tajerApi.updateAd(token, editingAd.id, payloadFromForm(form, adCategories, editingAd));
         setNotice({ tone: "success", text: "تم إرسال الإعلان للمراجعة مرة أخرى." });
       } else {
         if (!store) throw new Error("missing_store");
-        await tajerApi.createAd(token, store.id, payloadFromForm(form));
+        await tajerApi.createAd(token, store.id, payloadFromForm(form, adCategories));
         setNotice({ tone: "success", text: "تم إرسال طلب الإعلان للمراجعة." });
       }
 
@@ -1267,7 +1329,7 @@ export default function AdsPage() {
         tone: "error",
         text: receiptOnlyUpdate
           ? receiptUpdateErrorMessage(error)
-          : "تعذر إرسال الإعلان للمراجعة. راجع الحقول وحاول مرة أخرى.",
+          : adSubmitErrorMessage(error),
       });
     } finally {
       setSaving(false);
@@ -1422,12 +1484,14 @@ export default function AdsPage() {
                               value={form.target_category}
                               onChange={(e) => setField("target_category", e.target.value)}
                             >
-                              {marketplaceCategories.map((category) => (
-                                <option key={category}>{category}</option>
+                              {adCategoryOptionsForForm(adCategories, form.target_category).map((category) => (
+                                <option key={category.key} value={category.key}>
+                                  {category.label}
+                                </option>
                               ))}
                             </select>
                             <p className="mt-2 text-xs leading-6 text-ink-700/55">
-                              اختر أقرب تصنيف متاح لطبيعة الإعلان.
+                              اختر التصنيف الأقرب لطبيعة الإعلان ليسهل على الإدارة مراجعته.
                             </p>
                           </div>
 
@@ -1669,7 +1733,7 @@ export default function AdsPage() {
                 ) : (
                   <div className="grid gap-5">
                     {visibleAds.map((ad) => (
-                      <AdCard key={ad.id} ad={ad} onEdit={startEdit} />
+                      <AdCard key={ad.id} ad={ad} categoryOptions={adCategories} onEdit={startEdit} />
                     ))}
                   </div>
                 )}

@@ -4,6 +4,7 @@ import type {
   MerchantStore,
   MerchantMeResponse,
   MerchantProduct,
+  AdCategoryOption,
 } from "./types";
 
 const API_BASE_URL =
@@ -94,6 +95,10 @@ export const tajerApi = {
 
   me(token: string) {
     return request<MerchantMeResponse>("/merchants/me", { token });
+  },
+
+  adCategories() {
+    return request<AdCategoryOption[]>("/merchants/ad-categories");
   },
 
   updateStore(
@@ -208,3 +213,20 @@ export const marketplaceCategories = [
   "صيانة",
   "خدمات نظافة",
 ] as const;
+
+export const adCategoryFallbacks: AdCategoryOption[] = [
+  { key: "restaurants_cafes", label: "مطاعم ومقاهي" },
+  { key: "online_store", label: "متجر إلكتروني" },
+  { key: "home_services", label: "خدمات منزلية" },
+  { key: "automotive", label: "سيارات" },
+  { key: "real_estate", label: "عقار" },
+  { key: "health_fitness", label: "صحة ولياقة" },
+  { key: "entertainment_events", label: "ترفيه وفعاليات" },
+  { key: "travel_tourism", label: "سفر وسياحة" },
+  { key: "education_training", label: "تعليم وتدريب" },
+  { key: "fashion_beauty", label: "أزياء وجمال" },
+  { key: "technology_devices", label: "تقنية وأجهزة" },
+  { key: "offers_discounts", label: "عروض وتخفيضات" },
+  { key: "general_services", label: "خدمات عامة" },
+  { key: "other", label: "أخرى" },
+];

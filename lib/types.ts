@@ -42,6 +42,11 @@ export type MerchantAdAnalytics = {
   reason?: string | null;
 };
 
+export type AdCategoryOption = {
+  key: string;
+  label: string;
+};
+
 export type MerchantAd = {
   id: string;
   merchant_store_id: string;
