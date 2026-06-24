@@ -29,9 +29,9 @@ export function TajerShell({ children }: { children: React.ReactNode }) {
       <aside className="fixed right-0 top-0 hidden h-full w-72 bg-navy-900 p-5 text-ivory-50 lg:block">
         <div className="rounded-2xl border border-gold-500/25 bg-white/5 p-5">
           <p className="text-xs font-bold text-gold-500">ديوانية</p>
-          <h1 className="mt-2 text-2xl font-black">بوابة التجار</h1>
+          <h1 className="mt-2 text-2xl font-black">بوابة التاجر</h1>
           <p className="mt-2 text-sm leading-6 text-ivory-100/75">
-            أدر متجرك ومنتجاتك وطلبات الإعلان من مكان واحد
+            إدارة المتجر والمنتجات وطلبات الإعلان
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export function TajerShell({ children }: { children: React.ReactNode }) {
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
             <div>
               <p className="text-xs font-bold text-gold-700">tajer.diwaniya.online</p>
-              <h2 className="text-xl font-black text-navy-900">{activeItem?.label || "لوحة تاجر ديوانية"}</h2>
+              <h2 className="text-xl font-black text-navy-900">{activeItem?.label || "لوحة التاجر"}</h2>
             </div>
             <div className="flex items-center gap-2">
               <Link href="/" className="hidden rounded-full border border-sand-400/40 px-4 py-2 text-sm font-bold text-navy-900 sm:inline-flex">

@@ -130,7 +130,7 @@ export default function InsightsPage() {
         text:
           products.length > 0
             ? `${products.length} منتج مسجل، منها ${approvedProducts} معتمد.`
-            : "أضف منتجًا واحدًا على الأقل حتى تظهر بيانات أفضل لاحقًا.",
+            : "أضف منتجًا واحدًا على الأقل لتعزيز قراءة جاهزية المتجر.",
         done: products.length > 0,
       },
       {
@@ -165,11 +165,11 @@ export default function InsightsPage() {
                 </div>
 
                 <h1 className="mt-3 text-3xl font-black leading-tight lg:text-5xl">
-                  المؤشرات قيد التجهيز
+                  المؤشرات
                 </h1>
 
                 <p className="mt-4 max-w-2xl text-sm leading-8 text-ivory-100/72">
-                  تعرض هذه الصفحة جاهزية المتجر والمنتجات والإعلانات اعتمادًا على البيانات المتاحة حاليًا، دون أرقام تقديرية.
+                  ملخص تشغيلي يساعدك على متابعة الأداء من البيانات المتاحة، دون عرض أرقام تقديرية أو غير مؤكدة.
                 </p>
               </div>
 
@@ -296,7 +296,7 @@ export default function InsightsPage() {
                   <h3 className="font-black text-navy-900">مؤشرات الأداء</h3>
                 </div>
                 <p className="mt-3 text-sm leading-7 text-ink-700/70">
-                  لن تظهر أي مؤشرات أداء هنا إلا بعد توفير بيانات حقيقية من التطبيق.
+                  لا يتم عرض مؤشرات تقديرية حفاظًا على دقة البيانات. تظهر المؤشرات فقط عند توفر بيانات فعلية ومعتمدة من النظام.
                 </p>
               </div>
             </div>

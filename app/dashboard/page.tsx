@@ -139,7 +139,7 @@ export default function DashboardPage() {
     <AuthGuard>
       <TajerShell>
       {loading ? (
-        <LoadingState label="جاري تجهيز لوحة التاجر..." />
+        <LoadingState label="جاري تحميل لوحة التاجر..." />
       ) : (
         <>
           <section className="rounded-[2rem] bg-navy-900 p-6 text-ivory-50 shadow-card lg:p-8">
@@ -155,15 +155,15 @@ export default function DashboardPage() {
                 </h1>
 
                 <p className="mt-4 max-w-2xl text-sm leading-8 text-ivory-100/72 lg:text-base">
-                  تابع بيانات متجرك ومنتجاتك وطلبات الإعلان من مكان واحد. كل متجر ومنتج وإعلان يمر بالمراجعة قبل الظهور للمستخدمين.
+                  تابع بيانات متجرك ومنتجاتك وطلبات الإعلان من مكان واحد. تظهر العناصر بعد مراجعتها واعتمادها من الإدارة.
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <a href="/products" className="btn-primary px-6 py-3 text-sm">
-                    أضف منتج
+                    إضافة منتج
                   </a>
                   <a href="/ads" className="btn-secondary px-6 py-3 text-sm font-bold">
-                    اطلب إعلان
+                    طلب إعلان
                   </a>
                 </div>
               </div>
@@ -171,10 +171,10 @@ export default function DashboardPage() {
               <div className="rounded-[1.5rem] border border-gold-500/20 bg-white/7 p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-black text-gold-400">جاهزية المتجر</p>
+                    <p className="text-sm font-black text-gold-400">ملخص جاهزية المتجر</p>
                     <p className="num mt-2 text-4xl font-black">{progress}%</p>
                     <p className="mt-2 max-w-xs text-xs leading-6 text-ivory-100/62">
-                      محسوبة من اكتمال بيانات المتجر، وجود منتجات، ووجود طلبات إعلان قابلة للمراجعة أو الظهور.
+                      قراءة مختصرة لاكتمال بيانات المتجر والمنتجات وطلبات الإعلان.
                     </p>
                   </div>
                   <div className="rounded-2xl bg-gold-500/15 p-3 text-gold-400">
@@ -256,21 +256,21 @@ export default function DashboardPage() {
             <div className="surface p-6">
               <div className="flex items-center gap-3">
                 <Store className="text-gold-700" />
-                <h2 className="text-xl font-black text-navy-900">ما الذي يحتاجه متجرك الآن؟</h2>
+                <h2 className="text-xl font-black text-navy-900">إجراءات تحتاج انتباهك</h2>
               </div>
 
               <div className="mt-5 grid gap-3">
                 {products.length === 0 ? (
                   <EmptyMiniState
                     title="ابدأ بإضافة أول منتج"
-                    text="أضف منتجًا واحدًا على الأقل بسعر وكمية واضحة حتى يبدأ المتجر بالظهور بشكل أقوى بعد الاعتماد."
+                    text="أضف منتجًا واحدًا على الأقل بسعر وكمية واضحة ليتم مراجعته من الإدارة."
                   />
                 ) : null}
 
                 {ads.length === 0 ? (
                   <EmptyMiniState
-                    title="اطلب أول إعلان مدفوع"
-                    text="أرسل طلب إعلان واضح وتابع مراجعته، دفعه، وتجهيز ظهوره من صفحة الإعلانات."
+                    title="أرسل أول طلب إعلان"
+                    text="قدّم طلب إعلان واضح وتابع مراجعته ودفعه وحالة ظهوره من صفحة الإعلانات."
                   />
                 ) : null}
 
@@ -289,7 +289,7 @@ export default function DashboardPage() {
                 <h2 className="text-xl font-black text-navy-900">جاهزية الظهور التجاري</h2>
               </div>
               <p className="mt-4 text-sm leading-8 text-ink-700/70">
-                ركّز الآن على بيانات متجر واضحة، منتجات مكتملة، وإعلانات بحالة مفهومة. أي مؤشرات أداء مستقبلية يجب أن تأتي من بيانات حقيقية من التطبيق.
+                ركّز على بيانات متجر واضحة، ومنتجات مكتملة، وإعلانات بحالة مفهومة. تعرض المؤشرات فقط عندما تتوفر بيانات فعلية من النظام.
               </p>
             </div>
           </section>

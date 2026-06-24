@@ -88,9 +88,9 @@ export default function RegisterPage() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <p className="text-sm font-black text-gold-700">بوابة التجار</p>
-            <h1 className="text-3xl font-black text-navy-900">تسجيل تاجر جديد</h1>
+            <h1 className="text-3xl font-black text-navy-900">إنشاء حساب تاجر</h1>
             <p className="mt-2 text-sm leading-7 text-ink-700/65">
-              أرسل بيانات المتجر للمراجعة، ثم تابع المنتجات وطلبات الإعلان من البوابة.
+              أرسل بيانات نشاطك ليتم مراجعتها من الإدارة.
             </p>
           </div>
           <Link href="/login" className="rounded-full border border-sand-400/40 px-5 py-2 text-sm font-bold">
@@ -150,7 +150,7 @@ export default function RegisterPage() {
           {error ? <p className="mt-5 rounded-2xl bg-err/10 p-3 text-sm font-bold text-err">{error}</p> : null}
 
           <button disabled={loading} className="btn-primary mt-6 px-8 py-3 disabled:opacity-60">
-            {loading ? "جاري إنشاء الحساب..." : "إنشاء الحساب وإرسال المتجر للمراجعة"}
+            {loading ? "جاري إنشاء الحساب..." : "إنشاء حساب تاجر"}
           </button>
         </form>
       </div>

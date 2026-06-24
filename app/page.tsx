@@ -16,7 +16,7 @@ const benefits = [
     icon: Store,
   },
   {
-    title: "منتجات قيد المراجعة",
+    title: "منتجات منظمة",
     text: "أضف المنتجات والعروض، ونراجعها قبل الظهور لحماية جودة السوق.",
     icon: PackageCheck,
   },
@@ -35,7 +35,7 @@ const benefits = [
 const operations = [
   { label: "تسجيل الدخول", value: "ابدأ", icon: BadgeCheck },
   { label: "إعداد المتجر", value: "مراجعة", icon: Store },
-  { label: "طلبات الإعلان", value: "ظهور", icon: Megaphone },
+  { label: "طلبات الإعلان", value: "حالة واضحة", icon: Megaphone },
 ];
 
 const workflow = [
@@ -63,7 +63,7 @@ export default function HomePage() {
                 دخول
               </Link>
               <Link href="/register" className="btn-primary px-5 py-2 text-sm">
-                انضم كتاجر
+                إنشاء حساب تاجر
               </Link>
             </div>
           </nav>
@@ -95,7 +95,7 @@ export default function HomePage() {
 
               <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
                 {[
-                  ["مراجعة قبل النشر", "جودة أعلى"],
+                  ["مراجعة قبل الظهور", "جودة أعلى"],
                   ["طلبات إعلان", "حالة واضحة"],
                   ["متجر محلي", "حسب الحي"],
                 ].map(([title, hint]) => (
@@ -143,7 +143,7 @@ export default function HomePage() {
                   </div>
 
                   <div className="mt-4 rounded-2xl bg-navy-900 p-4 text-ivory-50">
-                    <p className="text-sm font-black text-gold-400">واضح للتاجر</p>
+                    <p className="text-sm font-black text-gold-400">مسار واضح</p>
                     <p className="mt-2 text-sm leading-7 text-ivory-100/78">
                       كل طلب يمر بمراجعة الإدارة قبل الظهور، وتظهر حالته للتاجر بخطوة تالية واضحة.
                     </p>

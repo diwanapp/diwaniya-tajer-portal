@@ -125,11 +125,11 @@ const NEXT_ACTION_LABELS: Record<string, string> = {
 };
 
 const EFFECTIVE_DELIVERY_LABELS: Record<string, string> = {
-  blocked_by_review: "محجوب لحين اكتمال المراجعة",
-  blocked_by_payment: "محجوب لحين اعتماد الدفع",
-  blocked_by_media: "محجوب لحين اكتمال صورة الإعلان",
-  blocked_by_store: "محجوب لحين اعتماد المتجر",
-  blocked_by_placement: "محجوب لحين تجهيز مكان الظهور",
+  blocked_by_review: "بانتظار اكتمال المراجعة",
+  blocked_by_payment: "بانتظار اعتماد الدفع",
+  blocked_by_media: "بانتظار اكتمال صورة الإعلان",
+  blocked_by_store: "بانتظار اعتماد المتجر",
+  blocked_by_placement: "بانتظار تجهيز مكان الظهور",
   blocked_by_window: "خارج مدة الظهور",
   ready: "جاهز للظهور",
   scheduled: "مجدول",
@@ -144,10 +144,10 @@ const REQUIRED_CHANGE_LABELS: Record<string, string> = {
   image: "صورة الإعلان",
   title: "عنوان الإعلان",
   description: "وصف الإعلان",
-  targeting: "الاستهداف",
+  targeting: "التصنيف الإعلاني",
   start_date: "تاريخ بداية الظهور",
   end_date: "تاريخ نهاية الظهور",
-  duration: "مدة الإعلان",
+  duration: "مدة الإعلان / تاريخ الظهور",
   receipt: "الإيصال / الدفع",
   other: "أخرى",
 };
@@ -264,9 +264,11 @@ function canUpdateReceipt(ad: MerchantAd) {
   const review = moderationState(ad);
   const payment = paymentStatus(ad);
   const publication = publicationStatus(ad);
+  const changes = requestedChanges(ad);
+  const receiptOnlyChange = review === "changes_requested" && changes.length === 1 && changes[0] === "receipt";
 
   return (
-    review !== "changes_requested" &&
+    (review !== "changes_requested" || receiptOnlyChange) &&
     review !== "rejected" &&
     ["payment_requested", "rejected", "receipt_uploaded"].includes(payment) &&
     publication !== "ended" &&
@@ -467,6 +469,11 @@ function SummaryCardItem({ label, value, icon: Icon }: SummaryCard) {
 
 function validateForm(form: AdForm) {
   if (form.title.trim().length < 2) return "عنوان الإعلان مطلوب ويجب أن يكون واضحًا.";
+  if (!form.description.trim() || form.description.trim().length < 10) return "وصف الإعلان مطلوب ويجب أن يوضح العرض أو الخدمة.";
+  if (!form.target_category.trim()) return "اختر التصنيف الإعلاني قبل الإرسال.";
+  if (!form.image_url.trim()) return "رابط صورة الإعلان مطلوب قبل الإرسال.";
+  if (!form.requested_start_date) return "اختر تاريخ بداية الظهور المقترح.";
+  if (!form.requested_end_date) return "اختر تاريخ نهاية الظهور المقترح.";
   if (form.amount_paid.trim()) {
     const amount = Number(form.amount_paid);
     if (!Number.isFinite(amount) || amount <= 0) return "اكتب مبلغًا صحيحًا أكبر من صفر.";
@@ -560,38 +567,38 @@ function merchantAction(ad: MerchantAd) {
   const payment = paymentStatus(ad);
   const publication = publicationStatus(ad);
 
-  if (review === "changes_requested" || ad.next_action === "wait_for_merchant_changes") {
-    return {
-      label: "تعديل الإعلان وإعادة الإرسال",
-      detail: "عدّل الحقول المطلوبة ثم أرسل الإعلان للمراجعة مرة أخرى.",
-      kind: "edit" as const,
-    };
-  }
-
   if (canUpdateReceipt(ad)) {
     const hasReceipt = Boolean(receiptUrl(ad));
 
     if (payment === "rejected") {
       return {
-        label: "تحديث الإيصال",
-        detail: "راجع ملاحظة الإدارة ثم أرسل رابط إيصال صحيح لاعتماد الدفع.",
+        label: "تحديث إيصال الدفع",
+        detail: "راجع ملاحظة الإدارة ثم أرسل إيصالًا واضحًا لاعتماد الدفع.",
         kind: "receipt" as const,
       };
     }
 
     return {
-      label: hasReceipt ? "تحديث الإيصال" : "إضافة / تحديث الإيصال",
+      label: hasReceipt ? "تحديث إيصال الدفع" : "إضافة إيصال الدفع",
       detail: hasReceipt
-        ? "يمكنك تحديث رابط الإيصال ما دام بانتظار اعتماد الإدارة."
-        : "أضف رابط الإيصال ليتم إرساله للإدارة لاعتماد الدفع.",
+        ? "يمكن تحديث الإيصال ما دام الطلب بانتظار اعتماد الإدارة."
+        : "أضف إيصال الدفع ليراجع من الإدارة.",
       kind: "receipt" as const,
+    };
+  }
+
+  if (review === "changes_requested" || ad.next_action === "wait_for_merchant_changes") {
+    return {
+      label: "تعديل الإعلان وإعادة الإرسال",
+      detail: "أكمل التعديلات المطلوبة ثم أعد إرسال الطلب للمراجعة.",
+      kind: "edit" as const,
     };
   }
 
   if (payment === "receipt_uploaded" && publication !== "ended" && publication !== "cancelled") {
     return {
-      label: "بانتظار اعتماد الإيصال من الإدارة",
-      detail: "تم تسجيل الإيصال، وسيظهر تحديث الحالة بعد اعتماد الدفع.",
+      label: "بانتظار مراجعة إيصال الدفع",
+      detail: "تم تسجيل الإيصال، وتظهر الحالة الجديدة بعد اعتماد الدفع.",
       kind: "status" as const,
     };
   }
@@ -646,8 +653,8 @@ function merchantAction(ad: MerchantAd) {
 
   if (publication === "paused") {
     return {
-      label: "متوقف مؤقتًا من الإدارة",
-      detail: "الإعلان غير ظاهر حاليًا حتى تستأنف الإدارة النشر.",
+      label: "متوقف مؤقتًا",
+      detail: "الإعلان غير ظاهر حتى تستأنف الإدارة النشر.",
       kind: "status" as const,
     };
   }
@@ -662,7 +669,7 @@ function merchantAction(ad: MerchantAd) {
 
   return {
     label: "تابع حالة الإعلان",
-    detail: "ستتغير الحالة عند تحديث الإدارة لمسار الطلب.",
+    detail: "تتغير الحالة عند تحديث الإدارة لمسار الطلب.",
     kind: "status" as const,
   };
 }
@@ -799,7 +806,7 @@ function OperationLog({ ad }: { ad: MerchantAd }) {
     <div className="rounded-2xl border border-sand-400/25 bg-white p-4">
       <div className="mb-3 flex items-center gap-2">
         <ClipboardList className="text-gold-700" size={18} />
-        <h4 className="font-black text-navy-900">سجل العمليات</h4>
+        <h4 className="font-black text-navy-900">سجل الحالة</h4>
       </div>
       <div className="space-y-2">
         {events.map((event) => (
@@ -811,14 +818,14 @@ function OperationLog({ ad }: { ad: MerchantAd }) {
       </div>
       {!hasDetailedDates ? (
         <p className="mt-3 rounded-xl bg-ivory-100 px-3 py-2 text-xs leading-6 text-ink-700/65">
-          سجل العمليات التفصيلي سيظهر بعد ربط سجل الحالات.
+          تظهر تفاصيل الحالة عند توفر سجل تشغيلي معتمد من النظام.
         </p>
       ) : null}
     </div>
   );
 }
 
-function PerformancePlaceholder({ ended }: { ended: boolean }) {
+function PerformancePanel() {
   return (
     <div className="rounded-2xl border border-gold-500/25 bg-gold-500/10 p-4">
       <div className="flex items-center gap-2">
@@ -826,9 +833,7 @@ function PerformancePlaceholder({ ended }: { ended: boolean }) {
         <h4 className="font-black text-navy-900">مؤشرات الأداء</h4>
       </div>
       <p className="mt-3 text-sm leading-7 text-ink-700/70">
-        {ended
-          ? "سيتم حفظ مؤشرات الإعلان هنا بعد توفر بيانات الأداء الفعلية، حتى يتمكن التاجر من الرجوع لها لاحقًا."
-          : "ستظهر هنا مؤشرات أداء الإعلان بعد ربط تتبع الأداء الفعلي من النظام. لن نعرض أرقامًا تقديرية أو غير مؤكدة."}
+        تظهر مؤشرات الأداء عند توفر بيانات فعلية من النظام، دون عرض أرقام تقديرية أو غير مؤكدة.
       </p>
     </div>
   );
@@ -855,7 +860,6 @@ function AdCard({
   const placement = [ad.placement_screen, ad.placement_slot].map(fieldValue).filter(Boolean).join(" · ") || "—";
   const dateRange = formatDateRange(ad.requested_start_date, ad.requested_end_date);
   const category = adCategoryLabel(ad.target_category, categoryOptions);
-  const isEnded = publication === "ended" || publication === "cancelled";
   const actionNeeded = needsMerchantAction(ad);
   const actionPanelClass = actionNeeded
     ? "border-warn/25 bg-warn/10"
@@ -925,9 +929,12 @@ function AdCard({
               <div className="flex items-start gap-3">
                 <AlertCircle className="mt-1 shrink-0 text-warn" size={20} />
                 <div>
-                  <h4 className="font-black text-navy-900">يتطلب تعديل من التاجر</h4>
+                  <h4 className="font-black text-navy-900">مطلوب تعديل الإعلان</h4>
                   <p className="mt-2 text-sm leading-7 text-ink-700/75">
-                    راجعت الإدارة إعلانك وطلبت تعديلات قبل اعتماده.
+                    راجعنا إعلانك، ونحتاج تعديل بعض البيانات قبل الاعتماد.
+                  </p>
+                  <p className="mt-1 text-sm leading-7 text-ink-700/75">
+                    أكمل التعديلات المطلوبة ثم أعد إرسال الطلب للمراجعة.
                   </p>
                 </div>
               </div>
@@ -1095,7 +1102,7 @@ function AdCard({
           </div>
 
           <div className="mt-5">
-            <PerformancePlaceholder ended={isEnded} />
+            <PerformancePanel />
           </div>
         </div>
       ) : null}
@@ -1234,7 +1241,7 @@ export default function AdsPage() {
     setNotice({
       tone: "info",
       text: canUpdateReceipt(ad)
-        ? "أدخل رابط الإيصال فقط، وسيتم إرساله للإدارة لاعتماد الدفع دون إعادة إرسال محتوى الإعلان."
+        ? "أدخل رابط الإيصال فقط لإرساله للمراجعة دون إعادة إرسال محتوى الإعلان."
         : "عدّل الحقول المطلوبة ثم أرسل الإعلان للمراجعة مرة أخرى.",
     });
     window.requestAnimationFrame(() => {
@@ -1308,8 +1315,8 @@ export default function AdsPage() {
         setNotice({
           tone: "success",
           text: hadReceipt
-            ? "تم تحديث الإيصال وإرساله للإدارة للمراجعة."
-            : "تم رفع الإيصال وإرساله للإدارة للمراجعة.",
+            ? "تم تحديث الإيصال وإرساله للمراجعة."
+            : "تم رفع الإيصال وإرساله للمراجعة.",
         });
       } else if (editingAd) {
         await tajerApi.updateAd(token, editingAd.id, payloadFromForm(form, adCategories, editingAd));
@@ -1353,22 +1360,22 @@ export default function AdsPage() {
             <section className="overflow-hidden rounded-[2rem] bg-navy-900 p-6 text-ivory-50 shadow-card lg:p-8">
               <div className="grid gap-6 lg:grid-cols-[1fr_0.72fr] lg:items-center">
                 <div>
-                  <p className="text-sm font-black text-gold-400">إعلاناتك في ديوانية</p>
+                  <p className="text-sm font-black text-gold-400">طلبات الإعلان</p>
                   <h1 className="mt-3 text-3xl font-black leading-tight lg:text-5xl">
-                    إعلاناتك في ديوانية
+                    مركز إعلانات التاجر
                   </h1>
                   <p className="mt-4 max-w-2xl text-sm leading-8 text-ivory-100/78 lg:text-base">
-                    أرسل إعلانك، وتابع مراجعته، وظهوره داخل التطبيق بعد اعتماد الإدارة.
+                    تابع إعلاناتك من الإرسال حتى الاعتماد وحالات الظهور والتواصل من التطبيق.
                   </p>
                 </div>
 
                 <div className="rounded-[1.5rem] border border-gold-500/25 bg-white/7 p-5">
                   <div className="flex items-center gap-3">
                     <Target className="text-gold-400" />
-                    <p className="font-black">مسار واضح للتاجر</p>
+                    <p className="font-black">متابعة منظمة</p>
                   </div>
                   <p className="mt-3 text-sm leading-7 text-ivory-100/72">
-                    كل حالة توضّح المطلوب الآن والخطوة التالية دون إظهار تفاصيل داخلية.
+                    كل حالة توضّح المطلوب الآن والخطوة التالية بلغة واضحة ومختصرة.
                   </p>
                 </div>
               </div>
@@ -1390,14 +1397,14 @@ export default function AdsPage() {
                     </div>
                     <div>
                       <h2 className="text-xl font-black text-navy-900">
-                        {isReceiptOnlyEditing ? "إضافة / تحديث الإيصال" : editingAd ? "تعديل طلب الإعلان" : "طلب إعلان جديد"}
+                        {isReceiptOnlyEditing ? "تحديث إيصال الدفع" : editingAd ? "تعديل طلب الإعلان" : "طلب إعلان جديد"}
                       </h2>
                       <p className="mt-1 text-sm text-ink-700/60">
                         {isReceiptOnlyEditing
-                          ? "سيتم إرسال الإيصال للإدارة لاعتماد الدفع دون تغيير مراجعة الإعلان."
+                          ? "يراجع الإيصال لاعتماد الدفع دون تغيير محتوى الإعلان."
                           : editingAd
-                            ? "سيعود الإعلان للمراجعة بعد الإرسال."
-                            : "سيتم إرساله للمراجعة قبل الظهور."}
+                            ? "أعد إرسال الإعلان للمراجعة بعد اكتمال التعديلات."
+                            : "قدّم طلب إعلان جديد. تتم المراجعة قبل ظهوره داخل التطبيق."}
                       </p>
                     </div>
                   </div>
@@ -1430,14 +1437,14 @@ export default function AdsPage() {
                   {isReceiptOnlyEditing ? (
                     <FormSection
                       title="إيصال الدفع"
-                      description="هذا المسار يحدّث رابط الإيصال فقط دون تعديل محتوى الإعلان."
+                      description="حدّث إيصال الدفع دون تعديل محتوى الإعلان."
                       icon={Receipt}
                     >
                       <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
                         <div className="rounded-xl border border-gold-500/25 bg-white p-4">
-                          <p className="text-sm font-black text-navy-900">تحديث الإيصال فقط</p>
+                          <p className="text-sm font-black text-navy-900">مراجعة إيصال الدفع</p>
                           <p className="mt-2 text-sm leading-7 text-ink-700/70">
-                            لن يتم تعديل عنوان الإعلان أو وصفه أو حالة المراجعة. ستراجع الإدارة الإيصال لاعتماد الدفع.
+                            يبقى عنوان الإعلان ووصفه كما هو، وتراجع الإدارة الإيصال لاعتماد الدفع.
                           </p>
                         </div>
 
@@ -1447,7 +1454,6 @@ export default function AdsPage() {
                           </label>
                           <input
                             className={fieldClass("receipt_image_url")}
-                            placeholder="https://example.com/receipt.jpg"
                             value={form.receipt_image_url}
                             onChange={(e) => setField("receipt_image_url", e.target.value)}
                             required
@@ -1458,8 +1464,8 @@ export default function AdsPage() {
                   ) : (
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
                       <FormSection
-                        title="أساسيات الإعلان"
-                        description="العنوان والتصنيف والوصف الذي سيساعد الإدارة على فهم الإعلان."
+                        title="تفاصيل الإعلان"
+                        description="عنوان واضح وتصنيف مناسب ووصف مختصر يساعد الإدارة على مراجعة الطلب."
                         icon={Megaphone}
                         className="xl:row-span-2"
                       >
@@ -1470,7 +1476,6 @@ export default function AdsPage() {
                             </label>
                             <input
                               className={fieldClass("title")}
-                              placeholder="مثال: عرض خاص للديوانيات"
                               value={form.title}
                               onChange={(e) => setField("title", e.target.value)}
                               required
@@ -1491,7 +1496,7 @@ export default function AdsPage() {
                               ))}
                             </select>
                             <p className="mt-2 text-xs leading-6 text-ink-700/55">
-                              اختر التصنيف الأقرب لطبيعة الإعلان ليسهل على الإدارة مراجعته.
+                              اختر التصنيف الأقرب لمجال الإعلان.
                             </p>
                           </div>
 
@@ -1499,7 +1504,6 @@ export default function AdsPage() {
                             <label className="text-sm font-bold text-ink-700">وصف الإعلان</label>
                             <textarea
                               className={`${fieldClass("description")} min-h-36`}
-                              placeholder="اكتب العرض، المدة، أو سبب تميز الإعلان"
                               value={form.description}
                               onChange={(e) => setField("description", e.target.value)}
                             />
@@ -1509,7 +1513,7 @@ export default function AdsPage() {
 
                       <FormSection
                         title="المدة والميزانية"
-                        description="اكتب المبلغ المقترح ومدة الظهور المطلوبة."
+                        description="أضف الميزانية والمدة المقترحة للظهور."
                         icon={CalendarClock}
                       >
                         <div className="grid gap-4 sm:grid-cols-3">
@@ -1518,7 +1522,6 @@ export default function AdsPage() {
                             <input
                               className={fieldClass("amount_paid")}
                               inputMode="decimal"
-                              placeholder="مثال: 250"
                               value={form.amount_paid}
                               onChange={(e) => setField("amount_paid", e.target.value)}
                             />
@@ -1546,7 +1549,7 @@ export default function AdsPage() {
 
                       <FormSection
                         title="الملفات والروابط"
-                        description="أضف روابط الصورة والإيصال عند توفرها."
+                        description="أضف روابط الصورة والإيصال عند توفرها للمراجعة."
                         icon={ImageIcon}
                       >
                         <div className="grid gap-4 sm:grid-cols-2">
@@ -1554,7 +1557,6 @@ export default function AdsPage() {
                             <label className="text-sm font-bold text-ink-700">رابط صورة الإعلان</label>
                             <input
                               className={fieldClass("image_url")}
-                              placeholder="https://example.com/ad.jpg"
                               value={form.image_url}
                               onChange={(e) => setField("image_url", e.target.value)}
                             />
@@ -1564,7 +1566,6 @@ export default function AdsPage() {
                             <label className="text-sm font-bold text-ink-700">رابط صورة الإيصال</label>
                             <input
                               className={fieldClass("receipt_image_url")}
-                              placeholder="https://example.com/receipt.jpg"
                               value={form.receipt_image_url}
                               onChange={(e) => setField("receipt_image_url", e.target.value)}
                             />
@@ -1604,7 +1605,7 @@ export default function AdsPage() {
                       <div>
                         <h2 className="text-lg font-black text-navy-900">طلب إعلان جديد</h2>
                         <p className="mt-1 max-w-2xl text-sm leading-7 text-ink-700/65">
-                          أرسل إعلانك للإدارة وتابع مراجعته وظهوره داخل التطبيق بعد الاعتماد.
+                          قدّم طلب إعلان جديد. تتم المراجعة قبل ظهوره داخل التطبيق.
                         </p>
                       </div>
                     </div>
@@ -1630,7 +1631,7 @@ export default function AdsPage() {
                   <div>
                     <h2 className="text-2xl font-black text-navy-900">طلبات الإعلانات</h2>
                     <p className="mt-1 text-sm leading-7 text-ink-700/60">
-                      تابع حالة المراجعة، الدفع، النشر، والظهور لكل طلب إعلان.
+                      تابع حالة المراجعة والدفع والظهور لكل طلب إعلان.
                     </p>
                   </div>
                   <button
@@ -1691,7 +1692,7 @@ export default function AdsPage() {
                       <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-700/45" size={18} />
                       <input
                         className="input pr-10"
-                        placeholder="ابحث بعنوان الإعلان أو التصنيف أو الحالة"
+                        aria-label="ابحث بعنوان الإعلان أو التصنيف أو الحالة"
                         value={searchTerm}
                         onChange={(event) => setSearchTerm(event.target.value)}
                       />
@@ -1715,9 +1716,9 @@ export default function AdsPage() {
                     <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-navy-900 text-gold-500">
                       <Megaphone size={34} />
                     </div>
-                    <h3 className="mt-5 text-2xl font-black text-navy-900">لا توجد طلبات إعلان بعد</h3>
+                    <h3 className="mt-5 text-2xl font-black text-navy-900">لا توجد طلبات إعلان حتى الآن.</h3>
                     <p className="mx-auto mt-3 max-w-md text-sm leading-8 text-ink-700/65">
-                      أرسل أول طلب إعلان. ستراجعه الإدارة قبل أي ظهور داخل التطبيق.
+                      أنشئ أول طلب إعلان، وتابع تأثيره من هذه الصفحة.
                     </p>
                   </div>
                 ) : visibleAds.length === 0 ? (

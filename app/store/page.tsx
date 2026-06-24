@@ -156,21 +156,21 @@ export default function StorePage() {
                 </div>
 
                 <h1 className="mt-3 text-3xl font-black leading-tight lg:text-5xl">
-                  خلّ بيانات متجرك واضحة
+                  بيانات المتجر
                 </h1>
 
                 <p className="mt-4 max-w-2xl text-sm leading-8 text-ivory-100/72">
-                  حدّث بيانات متجرك لتساعد الإدارة على مراجعتها بدقة. سيظهر ما يتم اعتماده داخل التطبيق حسب الإعدادات المتاحة.
+                  حدّث بيانات متجرك. تظهر البيانات داخل التطبيق بعد اعتمادها وفق الإعدادات المتاحة.
                 </p>
               </div>
 
               <div className="rounded-[1.5rem] border border-gold-500/20 bg-white/7 p-5">
                 <div className="flex items-center gap-3">
                   <CircleAlert className="text-gold-400" />
-                  <p className="font-black">ملاحظة</p>
+                  <p className="font-black">وضوح البيانات</p>
                 </div>
                 <p className="mt-3 text-sm leading-7 text-ivory-100/70">
-                  البيانات الواضحة تساعد الإدارة على مراجعة المتجر وتساعد مستخدمي التطبيق لاحقًا على فهم نشاطك.
+                  البيانات الواضحة تساعد الإدارة على مراجعة المتجر وتساعد مستخدمي التطبيق على فهم نشاطك.
                 </p>
               </div>
             </div>
@@ -206,7 +206,7 @@ export default function StorePage() {
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-navy-900">تحديث البيانات</h2>
-                  <p className="mt-1 text-sm text-ink-700/60">اكتب البيانات التي ترغب بمراجعتها من الإدارة.</p>
+                  <p className="mt-1 text-sm text-ink-700/60">أدخل البيانات التي ترغب بمراجعتها من الإدارة.</p>
                 </div>
               </div>
 
@@ -276,7 +276,6 @@ export default function StorePage() {
                   <label className="text-sm font-bold text-ink-700">رابط الموقع على الخريطة</label>
                   <input
                     className="input mt-2"
-                    placeholder="https://maps.google.com/?q=..."
                     value={form.google_maps_url}
                     onChange={(e) => setField("google_maps_url", e.target.value)}
                   />
@@ -286,7 +285,6 @@ export default function StorePage() {
                   <label className="text-sm font-bold text-ink-700">وصف المتجر</label>
                   <textarea
                     className="input mt-2 min-h-28"
-                    placeholder="وصف مختصر وواضح"
                     value={form.description}
                     onChange={(e) => setField("description", e.target.value)}
                   />

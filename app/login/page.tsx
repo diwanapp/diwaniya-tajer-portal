@@ -67,10 +67,10 @@ export default function LoginPage() {
           <div>
             <p className="text-sm font-black text-gold-500">بوابة التجار</p>
             <h1 className="mt-5 text-5xl font-black leading-tight">
-              تابع متجرك وإعلاناتك من مكان واحد
+              تسجيل دخول التاجر
             </h1>
             <p className="mt-5 text-lg leading-9 text-ivory-100/75">
-              دخول آمن لإدارة بيانات المتجر والمنتجات وطلبات الإعلان بعد مراجعة الإدارة.
+              ادخل إلى بوابة التاجر لإدارة متجرك ومنتجاتك وطلبات الإعلان.
             </p>
           </div>
           <p className="text-sm text-ivory-100/60">tajer.diwaniya.online</p>
@@ -82,7 +82,7 @@ export default function LoginPage() {
           <p className="text-sm font-bold text-gold-700">ديوانية</p>
           <h2 className="mt-2 text-3xl font-black text-navy-900">تسجيل دخول التاجر</h2>
           <p className="mt-2 text-sm leading-7 text-ink-700/75">
-            أدخل بياناتك للوصول إلى بوابة متجرك.
+            ادخل إلى بوابة التاجر لإدارة متجرك وطلبات الإعلان.
           </p>
 
           <label className="mt-6 block text-sm font-bold text-ink-700">البريد الإلكتروني</label>
@@ -114,7 +114,7 @@ export default function LoginPage() {
           <p className="mt-5 text-center text-sm text-ink-700/70">
             لا تملك حسابًا؟{" "}
             <Link href="/register" className="font-black text-gold-700">
-              سجل كتاجر
+              إنشاء حساب تاجر
             </Link>
           </p>
         </form>

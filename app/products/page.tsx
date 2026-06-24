@@ -224,22 +224,22 @@ export default function ProductsPage() {
           <section className="rounded-[2rem] bg-navy-900 p-6 text-ivory-50 shadow-card lg:p-8">
             <div className="grid gap-6 lg:grid-cols-[1fr_0.75fr] lg:items-center">
               <div>
-                <p className="text-sm font-black text-gold-500">إدارة المنتجات</p>
+                <p className="text-sm font-black text-gold-500">المنتجات</p>
                 <h1 className="mt-3 text-3xl font-black leading-tight lg:text-5xl">
-                  أضف منتجاتك وأسعارك ومخزونك بسهولة
+                  أضف منتجات متجرك لتعرض بشكل مميز
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-8 text-ivory-100/72">
-                  كل منتج جديد أو معدل يتم إرساله للمراجعة قبل الظهور في سوق ديوانية، لضمان جودة وموثوقية السوق.
+                  أضف المنتجات والأسعار والمخزون، وتراجعها الإدارة قبل ظهورها داخل التطبيق.
                 </p>
               </div>
 
               <div className="rounded-[1.5rem] border border-gold-500/20 bg-white/7 p-5">
                 <div className="flex items-center gap-3">
                   <PackagePlus className="text-gold-400" />
-                  <p className="font-black">نصيحة للتاجر</p>
+                  <p className="font-black">جودة العرض</p>
                 </div>
                 <p className="mt-3 text-sm leading-7 text-ivory-100/70">
-                  المنتج ذو الاسم الواضح، السعر المحدد، والمخزون المحدث يعطي ثقة أعلى ويزيد احتمالية التواصل.
+                  الاسم الواضح والسعر المحدد والمخزون المحدث تساعد على تقديم منتج موثوق.
                 </p>
               </div>
             </div>
@@ -276,7 +276,7 @@ export default function ProductsPage() {
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-navy-900">إضافة منتج</h2>
-                  <p className="mt-1 text-sm text-ink-700/60">سيتم إرساله للمراجعة قبل النشر.</p>
+                  <p className="mt-1 text-sm text-ink-700/60">يرسل المنتج إلى الإدارة للمراجعة قبل ظهوره داخل التطبيق.</p>
                 </div>
               </div>
 
@@ -285,7 +285,6 @@ export default function ProductsPage() {
                     <label className="text-sm font-bold text-ink-700">اسم المنتج <span className="text-err">*</span></label>
                   <input
                     className="input mt-2"
-                    placeholder="مثال: شاهي ممتاز"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
@@ -310,7 +309,6 @@ export default function ProductsPage() {
                     <label className="text-sm font-bold text-ink-700">السعر <span className="text-err">*</span></label>
                     <input
                       className="input mt-2"
-                      placeholder="0.00"
                       inputMode="decimal"
                       value={form.price}
                       onChange={(e) => setForm({ ...form, price: e.target.value })}
@@ -321,7 +319,6 @@ export default function ProductsPage() {
                     <label className="text-sm font-bold text-ink-700">الكمية</label>
                     <input
                       className="input mt-2"
-                      placeholder="0"
                       type="number"
                       value={form.stock_quantity}
                       onChange={(e) => setForm({ ...form, stock_quantity: Number(e.target.value) })}
@@ -333,7 +330,6 @@ export default function ProductsPage() {
                   <label className="text-sm font-bold text-ink-700">رابط الصورة</label>
                   <input
                     className="input mt-2"
-                    placeholder="اختياري حاليًا"
                     value={form.image_url}
                     onChange={(e) => setForm({ ...form, image_url: e.target.value })}
                   />
@@ -343,7 +339,6 @@ export default function ProductsPage() {
                   <label className="text-sm font-bold text-ink-700">وصف مختصر</label>
                   <textarea
                     className="input mt-2 min-h-28"
-                    placeholder="وصف المنتج، المقاس، النوع، أو أي تفاصيل مهمة"
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                   />
@@ -402,7 +397,7 @@ export default function ProductsPage() {
                   <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-700/45" size={18} />
                   <input
                     className="input pr-10"
-                    placeholder="ابحث باسم المنتج أو التصنيف"
+                    aria-label="ابحث باسم المنتج أو التصنيف"
                     value={productSearch}
                     onChange={(event) => setProductSearch(event.target.value)}
                   />
@@ -414,9 +409,9 @@ export default function ProductsPage() {
                   <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-navy-900 text-gold-500">
                     <PackageSearch size={34} />
                   </div>
-                  <h3 className="mt-5 text-2xl font-black text-navy-900">لا توجد منتجات بعد</h3>
+                  <h3 className="mt-5 text-2xl font-black text-navy-900">لا توجد منتجات مضافة حتى الآن.</h3>
                   <p className="mx-auto mt-3 max-w-md text-sm leading-8 text-ink-700/65">
-                    أضف أول منتج في متجرك. بعد المراجعة، يصبح جاهزًا للظهور في سوق ديوانية.
+                    أضف أول منتج ليتم مراجعته من الإدارة قبل ظهوره داخل التطبيق.
                   </p>
                 </div>
               ) : visibleProducts.length === 0 ? (
