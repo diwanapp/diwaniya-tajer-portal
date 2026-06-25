@@ -29,7 +29,7 @@ import {
   TimerReset,
 } from "lucide-react";
 import { adCategoryFallbacks, getStoredToken, TajerApiError, tajerApi } from "@/lib/api";
-import type { AdCategoryOption, MerchantAd, MerchantMeResponse } from "@/lib/types";
+import type { AdCategoryOption, MerchantAd, MerchantMeResponse, MerchantStore } from "@/lib/types";
 import { TajerShell } from "@/components/tajer-shell";
 import { AuthGuard } from "@/components/auth-guard";
 import { LoadingState } from "@/components/loading-state";
@@ -43,6 +43,13 @@ type AdForm = {
   description: string;
   requested_start_date: string;
   requested_end_date: string;
+  target_city: string;
+  target_city_id: string;
+  target_districts: string;
+  preferred_placement_screen: "home" | "marketplace";
+  contact_whatsapp: string;
+  contact_url: string;
+  map_url: string;
 };
 
 type Notice = {
@@ -83,6 +90,13 @@ const initialForm: AdForm = {
   description: "",
   requested_start_date: "",
   requested_end_date: "",
+  target_city: "",
+  target_city_id: "",
+  target_districts: "",
+  preferred_placement_screen: "marketplace",
+  contact_whatsapp: "",
+  contact_url: "",
+  map_url: "",
 };
 
 const REVIEW_LABELS: Record<string, string> = {
@@ -156,7 +170,7 @@ const CHANGE_FIELDS: Record<string, Array<keyof AdForm>> = {
   image: ["image_url"],
   title: ["title"],
   description: ["description"],
-  targeting: ["target_category"],
+  targeting: ["target_category", "target_city", "target_districts"],
   start_date: ["requested_start_date"],
   end_date: ["requested_end_date"],
   duration: ["requested_start_date", "requested_end_date"],
@@ -199,6 +213,18 @@ function publicationStatus(ad: MerchantAd) {
 
 function receiptUrl(ad: MerchantAd) {
   return fieldValue(ad.receipt_url) || fieldValue(ad.receipt_image_url);
+}
+
+function districtsLabel(ad: MerchantAd) {
+  const districts = ad.target_districts?.map((item) => fieldValue(item)).filter(Boolean) || [];
+  return districts.length > 0 ? districts.join("، ") : "يستهدف الإعلان كامل المدينة.";
+}
+
+function placementPreferenceLabel(value?: string | null) {
+  const clean = fieldValue(value);
+  if (clean === "home") return "الرئيسية";
+  if (clean === "marketplace") return "السوق";
+  return "غير محدد";
 }
 
 function labelFor(labels: Record<string, string>, value?: string | null) {
@@ -265,10 +291,10 @@ function canUpdateReceipt(ad: MerchantAd) {
   const payment = paymentStatus(ad);
   const publication = publicationStatus(ad);
   const changes = requestedChanges(ad);
-  const receiptOnlyChange = review === "changes_requested" && changes.length === 1 && changes[0] === "receipt";
+  const receiptChangeRequested = review === "changes_requested" && changes.includes("receipt");
 
   return (
-    (review !== "changes_requested" || receiptOnlyChange) &&
+    (review !== "changes_requested" || receiptChangeRequested) &&
     review !== "rejected" &&
     ["payment_requested", "rejected", "receipt_uploaded"].includes(payment) &&
     publication !== "ended" &&
@@ -474,6 +500,10 @@ function validateForm(form: AdForm) {
   if (!form.image_url.trim()) return "رابط صورة الإعلان مطلوب قبل الإرسال.";
   if (!form.requested_start_date) return "اختر تاريخ بداية الظهور المقترح.";
   if (!form.requested_end_date) return "اختر تاريخ نهاية الظهور المقترح.";
+  if (form.target_city.trim().length < 2) return "المدينة مطلوبة قبل إرسال طلب الإعلان.";
+  if (form.contact_whatsapp.trim() && !isPhoneLike(form.contact_whatsapp)) return "أدخل رقم واتساب صحيح للتواصل.";
+  if (form.contact_url.trim() && !isHttpUrl(form.contact_url)) return "رابط الموقع أو التحويل يجب أن يبدأ بـ http أو https.";
+  if (form.map_url.trim() && !isHttpUrl(form.map_url)) return "رابط الخريطة يجب أن يبدأ بـ http أو https.";
   if (form.amount_paid.trim()) {
     const amount = Number(form.amount_paid);
     if (!Number.isFinite(amount) || amount <= 0) return "اكتب مبلغًا صحيحًا أكبر من صفر.";
@@ -490,6 +520,26 @@ function validateForm(form: AdForm) {
     if (end < start) return "تاريخ نهاية الإعلان يجب أن يكون بعد تاريخ البداية.";
   }
   return null;
+}
+
+function districtsFromInput(value: string) {
+  const seen = new Set<string>();
+  return value
+    .split(/[\n,،]+/)
+    .map((item) => item.trim())
+    .filter((item) => {
+      if (!item || seen.has(item)) return false;
+      seen.add(item);
+      return true;
+    });
+}
+
+function isPhoneLike(value: string) {
+  const compact = value.trim().replace(/[\s\-()]/g, "");
+  if (!compact) return true;
+  if (!/^\+?\d+$/.test(compact)) return false;
+  const digits = compact.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15;
 }
 
 function validateReceiptForm(form: AdForm) {
@@ -520,6 +570,13 @@ function payloadFromForm(form: AdForm, categories: AdCategoryOption[], originalA
     title: string;
     description?: string;
     target_category?: string;
+    target_city?: string;
+    target_city_id?: string;
+    target_districts?: string[];
+    preferred_placement_screen?: "home" | "marketplace";
+    contact_whatsapp?: string;
+    contact_url?: string;
+    map_url?: string;
     image_url?: string;
     receipt_image_url?: string;
     amount_paid?: string;
@@ -529,6 +586,13 @@ function payloadFromForm(form: AdForm, categories: AdCategoryOption[], originalA
     title: form.title.trim(),
     description: form.description.trim() || undefined,
     target_category: form.target_category || undefined,
+    target_city: form.target_city.trim(),
+    target_city_id: form.target_city_id.trim() || undefined,
+    target_districts: districtsFromInput(form.target_districts),
+    preferred_placement_screen: form.preferred_placement_screen,
+    contact_whatsapp: form.contact_whatsapp.trim() || undefined,
+    contact_url: form.contact_url.trim() || undefined,
+    map_url: form.map_url.trim() || undefined,
     image_url: form.image_url.trim() || undefined,
     receipt_image_url: form.receipt_image_url.trim() || undefined,
     amount_paid: form.amount_paid.trim() || undefined,
@@ -559,6 +623,23 @@ function formFromAd(ad: MerchantAd): AdForm {
     description: fieldValue(ad.description),
     requested_start_date: fieldValue(ad.requested_start_date),
     requested_end_date: fieldValue(ad.requested_end_date),
+    target_city: fieldValue(ad.target_city),
+    target_city_id: fieldValue(ad.target_city_id),
+    target_districts: (ad.target_districts || []).join("، "),
+    preferred_placement_screen: ad.preferred_placement_screen === "home" ? "home" : "marketplace",
+    contact_whatsapp: fieldValue(ad.contact_whatsapp),
+    contact_url: fieldValue(ad.contact_url),
+    map_url: fieldValue(ad.map_url),
+  };
+}
+
+function formDefaultsForStore(store?: MerchantStore | null): AdForm {
+  return {
+    ...initialForm,
+    target_city: fieldValue(store?.city_name_ar),
+    target_city_id: fieldValue(store?.city_id),
+    contact_whatsapp: fieldValue(store?.whatsapp || store?.phone),
+    map_url: fieldValue(store?.google_maps_url),
   };
 }
 
@@ -1009,6 +1090,10 @@ function AdCard({
             <InfoTile label="مكان الظهور" value={placement} icon={Layers3} />
             <InfoTile label="بداية الظهور المعتمدة" value={formatDate(ad.placement_starts_at)} icon={CalendarClock} />
             <InfoTile label="نهاية الظهور المعتمدة" value={formatDate(ad.placement_ends_at)} icon={TimerReset} />
+            <InfoTile label="المدينة" value={fieldValue(ad.target_city) || "غير محدد"} icon={Target} />
+            <InfoTile label="الأحياء المستهدفة" value={districtsLabel(ad)} icon={Target} />
+            <InfoTile label="مكان الظهور المفضل" value={placementPreferenceLabel(ad.preferred_placement_screen)} icon={Layers3} />
+            <InfoTile label="واتساب الإعلان" value={fieldValue(ad.contact_whatsapp) || "غير متاح"} icon={BadgeCheck} />
           </div>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -1125,6 +1210,7 @@ export default function AdsPage() {
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const isReceiptOnlyEditing = editingAd ? canUpdateReceipt(editingAd) : false;
+  const currentStore = me?.stores[0] ?? null;
 
   async function reload() {
     const token = getStoredToken();
@@ -1258,7 +1344,7 @@ export default function AdsPage() {
 
   function openNewRequestForm() {
     setEditingAd(null);
-    setForm(initialForm);
+    setForm(formDefaultsForStore(currentStore));
     setNotice(null);
     setFormOpen(true);
     window.requestAnimationFrame(() => {
@@ -1548,26 +1634,92 @@ export default function AdsPage() {
                       </FormSection>
 
                       <FormSection
-                        title="الملفات والروابط"
-                        description="أضف روابط الصورة والإيصال عند توفرها للمراجعة."
-                        icon={ImageIcon}
+                        title="الاستهداف والتواصل"
+                        description="تختار الإدارة مكان الظهور النهائي حسب الجاهزية والمساحات المتاحة."
+                        icon={Target}
                       >
                         <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">
+                              المدينة <span className="text-err">*</span>
+                            </label>
+                            <input
+                              className={fieldClass("target_city")}
+                              value={form.target_city}
+                              onChange={(e) => setField("target_city", e.target.value)}
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">مكان الظهور المفضل</label>
+                            <select
+                              className={fieldClass("preferred_placement_screen")}
+                              value={form.preferred_placement_screen}
+                              onChange={(e) => setField("preferred_placement_screen", e.target.value)}
+                            >
+                              <option value="home">الرئيسية</option>
+                              <option value="marketplace">السوق</option>
+                            </select>
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="text-sm font-bold text-ink-700">الأحياء المستهدفة</label>
+                            <textarea
+                              className={`${fieldClass("target_districts")} min-h-24`}
+                              value={form.target_districts}
+                              onChange={(e) => setField("target_districts", e.target.value)}
+                            />
+                            <p className="mt-2 text-xs leading-6 text-ink-700/55">
+                              افصل بين الأحياء بفاصلة أو سطر جديد. إذا لم تحدد حيًا: يستهدف الإعلان كامل المدينة.
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">رقم واتساب للتواصل</label>
+                            <input
+                              className={fieldClass("contact_whatsapp")}
+                              value={form.contact_whatsapp}
+                              onChange={(e) => setField("contact_whatsapp", e.target.value)}
+                              inputMode="tel"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-bold text-ink-700">رابط الموقع أو التحويل</label>
+                            <input
+                              className={fieldClass("contact_url")}
+                              value={form.contact_url}
+                              onChange={(e) => setField("contact_url", e.target.value)}
+                            />
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="text-sm font-bold text-ink-700">رابط الخريطة</label>
+                            <input
+                              className={fieldClass("map_url")}
+                              value={form.map_url}
+                              onChange={(e) => setField("map_url", e.target.value)}
+                            />
+                            <p className="mt-2 text-xs leading-6 text-ink-700/55">
+                              يظهر هذا التواصل للمستخدم عند فتح تفاصيل الإعلان بعد اعتماده ونشره.
+                            </p>
+                          </div>
+                        </div>
+                      </FormSection>
+
+                      <FormSection
+                        title="الملفات والروابط"
+                        description="أضف رابط صورة الإعلان للمراجعة. الإيصال يرسل بعد طلب الدفع."
+                        icon={ImageIcon}
+                      >
+                        <div className="grid gap-4">
                           <div>
                             <label className="text-sm font-bold text-ink-700">رابط صورة الإعلان</label>
                             <input
                               className={fieldClass("image_url")}
                               value={form.image_url}
                               onChange={(e) => setField("image_url", e.target.value)}
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-sm font-bold text-ink-700">رابط صورة الإيصال</label>
-                            <input
-                              className={fieldClass("receipt_image_url")}
-                              value={form.receipt_image_url}
-                              onChange={(e) => setField("receipt_image_url", e.target.value)}
                             />
                           </div>
                         </div>

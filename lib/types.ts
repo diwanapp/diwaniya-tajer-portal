@@ -53,11 +53,18 @@ export type MerchantAd = {
   title: string;
   description?: string | null;
   target_category?: string | null;
+  target_city?: string | null;
   target_city_id?: string | null;
   target_district_id?: string | null;
+  target_districts?: string[] | null;
+  preferred_placement_screen?: string | null;
+  contact_whatsapp?: string | null;
+  contact_url?: string | null;
+  map_url?: string | null;
   image_url?: string | null;
   receipt_image_url?: string | null;
   receipt_url?: string | null;
+  receipt_file_type?: string | null;
   requested_start_date?: string | null;
   requested_end_date?: string | null;
   amount_paid?: string | number | null;
@@ -76,6 +83,7 @@ export type MerchantAd = {
   payment_requested_at?: string | null;
   receipt_uploaded_at?: string | null;
   payment_verified_at?: string | null;
+  payment_verified_amount?: string | number | null;
   payment_rejected_at?: string | null;
   publication_status?: string | null;
   publication_version?: number | null;
