@@ -53,9 +53,16 @@ export default function HomePage() {
       <section className="relative bg-navy-900 text-ivory-50">
         <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8 lg:py-10">
           <nav className="flex items-center justify-between">
-            <div>
+            <div className="flex items-center gap-3">
+              <img
+                src="/brand/logo-mark.png"
+                alt="ديوانية"
+                className="h-12 w-12 object-contain drop-shadow-sm"
+              />
+              <div>
               <p className="text-base font-black text-gold-500">ديوانية</p>
               <p className="text-xs tracking-wide text-ivory-100/55">tajer.diwaniya.online</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-3">

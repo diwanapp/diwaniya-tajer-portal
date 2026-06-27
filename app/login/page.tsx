@@ -79,6 +79,11 @@ export default function LoginPage() {
 
       <section className="flex items-center justify-center p-5">
         <form onSubmit={submit} className="surface w-full max-w-md p-6 lg:p-8">
+          <img
+            src="/brand/logo-mark.png"
+            alt="ديوانية"
+            className="mb-4 h-14 w-14 object-contain drop-shadow-sm"
+          />
           <p className="text-sm font-bold text-gold-700">ديوانية</p>
           <h2 className="mt-2 text-3xl font-black text-navy-900">تسجيل دخول التاجر</h2>
           <p className="mt-2 text-sm leading-7 text-ink-700/75">

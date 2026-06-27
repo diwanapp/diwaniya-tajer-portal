@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, BadgePercent, Boxes, Home, LayoutDashboard, LogOut, Store } from "lucide-react";
 import { clearStoredToken } from "@/lib/api";
 
+const BRAND_LOGO = "/brand/logo-mark.png";
+
 const nav = [
   { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard },
   { href: "/store", label: "المتجر", icon: Store },
@@ -28,6 +30,11 @@ export function TajerShell({ children }: { children: React.ReactNode }) {
     <main className="min-h-screen bg-ivory-50">
       <aside className="fixed right-0 top-0 hidden h-full w-72 bg-navy-900 p-5 text-ivory-50 lg:block">
         <div className="rounded-2xl border border-gold-500/25 bg-white/5 p-5">
+          <img
+            src={BRAND_LOGO}
+            alt="ديوانية"
+            className="mb-4 h-14 w-14 object-contain drop-shadow-sm"
+          />
           <p className="text-xs font-bold text-gold-500">ديوانية</p>
           <h1 className="mt-2 text-2xl font-black">بوابة التاجر</h1>
           <p className="mt-2 text-sm leading-6 text-ivory-100/75">
