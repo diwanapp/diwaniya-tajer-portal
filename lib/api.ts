@@ -5,6 +5,8 @@ import type {
   MerchantMeResponse,
   MerchantProduct,
   AdCategoryOption,
+  GeoCity,
+  GeoDistrict,
 } from "./types";
 
 const API_BASE_URL =
@@ -68,6 +70,14 @@ async function request<T>(
 }
 
 export const tajerApi = {
+  geoCities() {
+    return request<GeoCity[]>("/api/geo/cities");
+  },
+
+  geoDistricts(cityId: string) {
+    return request<GeoDistrict[]>(`/api/geo/cities/${encodeURIComponent(cityId)}/districts`);
+  },
+
   login(payload: { email: string; password: string }) {
     return request<MerchantAuthResponse>("/merchants/auth/login", {
       method: "POST",
@@ -82,6 +92,8 @@ export const tajerApi = {
     phone?: string;
     store_name: string;
     category: string;
+    city_id?: string;
+    district_id?: string;
     city_name_ar?: string;
     district_name_ar?: string;
     whatsapp?: string;
@@ -107,6 +119,8 @@ export const tajerApi = {
     payload: {
       name: string;
       category: string;
+      city_id?: string;
+      district_id?: string;
       city_name_ar?: string;
       district_name_ar?: string;
       phone?: string;

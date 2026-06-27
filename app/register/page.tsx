@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getStoredToken, marketplaceCategories, setStoredToken, tajerApi } from "@/lib/api";
+import type { GeoCity, GeoDistrict } from "@/lib/types";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,6 +15,8 @@ export default function RegisterPage() {
     phone: "",
     store_name: "",
     category: "بقالة",
+    city_id: "",
+    district_id: "",
     city_name_ar: "",
     district_name_ar: "",
     whatsapp: "",
@@ -22,6 +25,8 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [cities, setCities] = useState<GeoCity[]>([]);
+  const [districts, setDistricts] = useState<GeoDistrict[]>([]);
 
   useEffect(() => {
     if (getStoredToken()) {
@@ -31,8 +36,36 @@ export default function RegisterPage() {
     setChecking(false);
   }, [router]);
 
+  useEffect(() => {
+    void tajerApi.geoCities().then(setCities).catch(() => setCities([]));
+  }, []);
+
   function setField(key: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function selectCity(cityId: string) {
+    const city = cities.find((item) => item.id === cityId);
+    setDistricts([]);
+    setForm((current) => ({
+      ...current,
+      city_id: cityId,
+      city_name_ar: city?.name_ar || "",
+      district_id: "",
+      district_name_ar: "",
+    }));
+    if (cityId) {
+      void tajerApi.geoDistricts(cityId).then(setDistricts).catch(() => setDistricts([]));
+    }
+  }
+
+  function selectDistrict(districtId: string) {
+    const district = districts.find((item) => item.id === districtId);
+    setForm((current) => ({
+      ...current,
+      district_id: districtId,
+      district_name_ar: district?.name_ar || "",
+    }));
   }
 
   async function submit(event: React.FormEvent) {
@@ -131,11 +164,30 @@ export default function RegisterPage() {
             </div>
             <div>
               <label className="text-sm font-bold">المدينة</label>
-              <input className="input mt-2" value={form.city_name_ar} onChange={(e) => setField("city_name_ar", e.target.value)} />
+              <select className="input mt-2" value={form.city_id} onChange={(e) => selectCity(e.target.value)}>
+                <option value="">اختر المدينة</option>
+                {cities.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name_ar}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-sm font-bold">الحي</label>
-              <input className="input mt-2" value={form.district_name_ar} onChange={(e) => setField("district_name_ar", e.target.value)} />
+              <select
+                className="input mt-2"
+                value={form.district_id}
+                onChange={(e) => selectDistrict(e.target.value)}
+                disabled={!form.city_id}
+              >
+                <option value="">كل المدينة</option>
+                {districts.map((district) => (
+                  <option key={district.id} value={district.id}>
+                    {district.name_ar}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-sm font-bold">واتساب المتجر</label>

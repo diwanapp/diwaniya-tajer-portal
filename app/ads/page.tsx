@@ -29,7 +29,14 @@ import {
   TimerReset,
 } from "lucide-react";
 import { adCategoryFallbacks, getStoredToken, TajerApiError, tajerApi } from "@/lib/api";
-import type { AdCategoryOption, MerchantAd, MerchantMeResponse, MerchantStore } from "@/lib/types";
+import type {
+  AdCategoryOption,
+  GeoCity,
+  GeoDistrict,
+  MerchantAd,
+  MerchantMeResponse,
+  MerchantStore,
+} from "@/lib/types";
 import { TajerShell } from "@/components/tajer-shell";
 import { AuthGuard } from "@/components/auth-guard";
 import { LoadingState } from "@/components/loading-state";
@@ -220,6 +227,28 @@ function districtsLabel(ad: MerchantAd) {
   return districts.length > 0 ? districts.join("، ") : "يستهدف الإعلان كامل المدينة.";
 }
 
+function canonicalDistrictsLabel(ad: MerchantAd) {
+  const canonicalDistricts = ad.target_district_names_ar?.map((item) => fieldValue(item)).filter(Boolean) || [];
+  if (canonicalDistricts.length > 0) return canonicalDistricts.join("، ");
+
+  const singleDistrict = fieldValue(ad.target_district_name_ar);
+  if (singleDistrict) return singleDistrict;
+
+  const legacyDistricts =
+    ad.target_districts
+      ?.map((item) => fieldValue(item))
+      .filter((item) => item && !looksLikeId(item)) || [];
+  return legacyDistricts.length > 0 ? legacyDistricts.join("، ") : districtsLabel({ ...ad, target_districts: [] });
+}
+
+function targetCityLabel(ad: MerchantAd) {
+  return fieldValue(ad.target_city_name_ar) || fieldValue(ad.target_city);
+}
+
+function looksLikeId(value: string) {
+  return /^[a-z0-9_-]{8,}$/i.test(value) && !/[\u0600-\u06FF]/.test(value);
+}
+
 function placementPreferenceLabel(value?: string | null) {
   const clean = fieldValue(value);
   if (clean === "home") return "الرئيسية";
@@ -357,6 +386,8 @@ function searchableAdText(ad: MerchantAd, categories: AdCategoryOption[]) {
 
   return [
     ad.title,
+    targetCityLabel(ad),
+    canonicalDistrictsLabel(ad),
     adCategoryLabel(ad.target_category, categories),
     labelFor(REVIEW_LABELS, review),
     labelFor(PAYMENT_LABELS, payment),
@@ -500,7 +531,7 @@ function validateForm(form: AdForm) {
   if (!form.image_url.trim()) return "رابط صورة الإعلان مطلوب قبل الإرسال.";
   if (!form.requested_start_date) return "اختر تاريخ بداية الظهور المقترح.";
   if (!form.requested_end_date) return "اختر تاريخ نهاية الظهور المقترح.";
-  if (form.target_city.trim().length < 2) return "المدينة مطلوبة قبل إرسال طلب الإعلان.";
+  if (!form.target_city_id.trim()) return "اختر المدينة قبل إرسال طلب الإعلان.";
   if (form.contact_whatsapp.trim() && !isPhoneLike(form.contact_whatsapp)) return "أدخل رقم واتساب صحيح للتواصل.";
   if (form.contact_url.trim() && !isHttpUrl(form.contact_url)) return "رابط الموقع أو التحويل يجب أن يبدأ بـ http أو https.";
   if (form.map_url.trim() && !isHttpUrl(form.map_url)) return "رابط الخريطة يجب أن يبدأ بـ http أو https.";
@@ -623,7 +654,7 @@ function formFromAd(ad: MerchantAd): AdForm {
     description: fieldValue(ad.description),
     requested_start_date: fieldValue(ad.requested_start_date),
     requested_end_date: fieldValue(ad.requested_end_date),
-    target_city: fieldValue(ad.target_city),
+    target_city: targetCityLabel(ad),
     target_city_id: fieldValue(ad.target_city_id),
     target_districts: (ad.target_districts || []).join("، "),
     preferred_placement_screen: ad.preferred_placement_screen === "home" ? "home" : "marketplace",
@@ -1090,8 +1121,8 @@ function AdCard({
             <InfoTile label="مكان الظهور" value={placement} icon={Layers3} />
             <InfoTile label="بداية الظهور المعتمدة" value={formatDate(ad.placement_starts_at)} icon={CalendarClock} />
             <InfoTile label="نهاية الظهور المعتمدة" value={formatDate(ad.placement_ends_at)} icon={TimerReset} />
-            <InfoTile label="المدينة" value={fieldValue(ad.target_city) || "غير محدد"} icon={Target} />
-            <InfoTile label="الأحياء المستهدفة" value={districtsLabel(ad)} icon={Target} />
+            <InfoTile label="المدينة" value={targetCityLabel(ad) || "غير محدد"} icon={Target} />
+            <InfoTile label="الأحياء المستهدفة" value={canonicalDistrictsLabel(ad)} icon={Target} />
             <InfoTile label="مكان الظهور المفضل" value={placementPreferenceLabel(ad.preferred_placement_screen)} icon={Layers3} />
             <InfoTile label="واتساب الإعلان" value={fieldValue(ad.contact_whatsapp) || "غير متاح"} icon={BadgeCheck} />
           </div>
@@ -1199,6 +1230,8 @@ export default function AdsPage() {
   const [me, setMe] = useState<MerchantMeResponse | null>(null);
   const [ads, setAds] = useState<MerchantAd[]>([]);
   const [adCategories, setAdCategories] = useState<AdCategoryOption[]>(adCategoryFallbacks);
+  const [cities, setCities] = useState<GeoCity[]>([]);
+  const [targetDistrictOptions, setTargetDistrictOptions] = useState<GeoDistrict[]>([]);
   const [form, setForm] = useState<AdForm>(initialForm);
   const [editingAd, setEditingAd] = useState<MerchantAd | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -1219,15 +1252,21 @@ export default function AdsPage() {
       return;
     }
 
-    const [nextMe, nextCategories] = await Promise.all([
+    const [nextMe, nextCategories, nextCities] = await Promise.all([
       tajerApi.me(token),
       tajerApi.adCategories().catch(() => adCategoryFallbacks),
+      tajerApi.geoCities().catch(() => []),
     ]);
     setMe(nextMe);
     setAdCategories(nextCategories.length > 0 ? nextCategories : adCategoryFallbacks);
+    setCities(nextCities);
 
     const store = nextMe.stores[0];
     if (store) {
+      const cityId = fieldValue(store.city_id);
+      if (cityId && targetDistrictOptions.length === 0) {
+        void tajerApi.geoDistricts(cityId).then(setTargetDistrictOptions).catch(() => setTargetDistrictOptions([]));
+      }
       const result = await tajerApi.listAds(token, store.id);
       setAds(result.ads);
     } else {
@@ -1320,10 +1359,41 @@ export default function AdsPage() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function loadTargetDistricts(cityId: string) {
+    if (!cityId) {
+      setTargetDistrictOptions([]);
+      return;
+    }
+    void tajerApi.geoDistricts(cityId).then(setTargetDistrictOptions).catch(() => setTargetDistrictOptions([]));
+  }
+
+  function selectTargetCity(cityId: string) {
+    const city = cities.find((item) => item.id === cityId);
+    setForm((current) => ({
+      ...current,
+      target_city_id: cityId,
+      target_city: city?.name_ar || "",
+      target_districts: "",
+    }));
+    loadTargetDistricts(cityId);
+  }
+
+  function toggleTargetDistrict(districtId: string) {
+    const selected = new Set(districtsFromInput(form.target_districts));
+    if (selected.has(districtId)) {
+      selected.delete(districtId);
+    } else {
+      selected.add(districtId);
+    }
+    setField("target_districts", Array.from(selected).join("\n"));
+  }
+
   function startEdit(ad: MerchantAd) {
+    const nextForm = formFromAd(ad);
     setEditingAd(ad);
     setFormOpen(true);
-    setForm(formFromAd(ad));
+    setForm(nextForm);
+    loadTargetDistricts(nextForm.target_city_id);
     setNotice({
       tone: "info",
       text: canUpdateReceipt(ad)
@@ -1339,12 +1409,15 @@ export default function AdsPage() {
     setEditingAd(null);
     setFormOpen(false);
     setForm(initialForm);
+    setTargetDistrictOptions([]);
     setNotice(null);
   }
 
   function openNewRequestForm() {
+    const nextForm = formDefaultsForStore(currentStore);
     setEditingAd(null);
-    setForm(formDefaultsForStore(currentStore));
+    setForm(nextForm);
+    loadTargetDistricts(nextForm.target_city_id);
     setNotice(null);
     setFormOpen(true);
     window.requestAnimationFrame(() => {
@@ -1355,6 +1428,7 @@ export default function AdsPage() {
   function closeRequestForm() {
     setEditingAd(null);
     setForm(initialForm);
+    setTargetDistrictOptions([]);
     setNotice(null);
     setFormOpen(false);
   }
@@ -1416,6 +1490,7 @@ export default function AdsPage() {
       setForm(initialForm);
       setEditingAd(null);
       setFormOpen(false);
+      setTargetDistrictOptions([]);
       await reload();
     } catch (error) {
       setNotice({
@@ -1643,12 +1718,19 @@ export default function AdsPage() {
                             <label className="text-sm font-bold text-ink-700">
                               المدينة <span className="text-err">*</span>
                             </label>
-                            <input
+                            <select
                               className={fieldClass("target_city")}
-                              value={form.target_city}
-                              onChange={(e) => setField("target_city", e.target.value)}
+                              value={form.target_city_id}
+                              onChange={(e) => selectTargetCity(e.target.value)}
                               required
-                            />
+                            >
+                              <option value="">اختر المدينة</option>
+                              {cities.map((city) => (
+                                <option key={city.id} value={city.id}>
+                                  {city.name_ar}
+                                </option>
+                              ))}
+                            </select>
                           </div>
 
                           <div>
@@ -1665,11 +1747,42 @@ export default function AdsPage() {
 
                           <div className="sm:col-span-2">
                             <label className="text-sm font-bold text-ink-700">الأحياء المستهدفة</label>
-                            <textarea
-                              className={`${fieldClass("target_districts")} min-h-24`}
-                              value={form.target_districts}
-                              onChange={(e) => setField("target_districts", e.target.value)}
-                            />
+                            <div
+                              className={`mt-2 rounded-2xl border border-sand-400/45 bg-white p-3 ${
+                                highlightedFields.has("target_districts") ? "border-warn bg-warn/5 ring-2 ring-warn/20" : ""
+                              }`}
+                            >
+                              {form.target_city_id && targetDistrictOptions.length > 0 ? (
+                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                  {targetDistrictOptions.map((district) => {
+                                    const selected = districtsFromInput(form.target_districts).includes(district.id);
+                                    return (
+                                      <label
+                                        key={district.id}
+                                        className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                                          selected
+                                            ? "border-gold-500/45 bg-gold-500/10 text-gold-700"
+                                            : "border-sand-400/30 bg-ivory-50 text-ink-700"
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={selected}
+                                          onChange={() => toggleTargetDistrict(district.id)}
+                                        />
+                                        {district.name_ar}
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-sm leading-7 text-ink-700/60">
+                                  {form.target_city_id
+                                    ? "لا توجد أحياء مفعلة لهذه المدينة."
+                                    : "اختر المدينة أولًا لعرض الأحياء المتاحة."}
+                                </p>
+                              )}
+                            </div>
                             <p className="mt-2 text-xs leading-6 text-ink-700/55">
                               افصل بين الأحياء بفاصلة أو سطر جديد. إذا لم تحدد حيًا: يستهدف الإعلان كامل المدينة.
                             </p>

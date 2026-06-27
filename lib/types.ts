@@ -37,6 +37,22 @@ export type MerchantProduct = {
   review_note?: string | null;
 };
 
+export type GeoCity = {
+  id: string;
+  name_ar: string;
+  region_ar?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
+export type GeoDistrict = {
+  id: string;
+  city_id: string;
+  name_ar: string;
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
 export type MerchantAdAnalytics = {
   available: boolean;
   reason?: string | null;
@@ -56,6 +72,9 @@ export type MerchantAd = {
   target_city?: string | null;
   target_city_id?: string | null;
   target_district_id?: string | null;
+  target_city_name_ar?: string | null;
+  target_district_name_ar?: string | null;
+  target_district_names_ar?: string[] | null;
   target_districts?: string[] | null;
   preferred_placement_screen?: string | null;
   contact_whatsapp?: string | null;

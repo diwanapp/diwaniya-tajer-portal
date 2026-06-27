@@ -13,7 +13,7 @@ import {
   Store,
 } from "lucide-react";
 import { getStoredToken, marketplaceCategories, tajerApi } from "@/lib/api";
-import type { MerchantMeResponse } from "@/lib/types";
+import type { GeoCity, GeoDistrict, MerchantMeResponse } from "@/lib/types";
 import { TajerShell } from "@/components/tajer-shell";
 import { AuthGuard } from "@/components/auth-guard";
 import { StatusChip } from "@/components/status-chip";
@@ -22,6 +22,8 @@ import { LoadingState } from "@/components/loading-state";
 type StoreForm = {
   name: string;
   category: string;
+  city_id: string;
+  district_id: string;
   city_name_ar: string;
   district_name_ar: string;
   phone: string;
@@ -49,6 +51,8 @@ export default function StorePage() {
   const [form, setForm] = useState<StoreForm>({
     name: "",
     category: "بقالة",
+    city_id: "",
+    district_id: "",
     city_name_ar: "",
     district_name_ar: "",
     phone: "",
@@ -59,6 +63,8 @@ export default function StorePage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cities, setCities] = useState<GeoCity[]>([]);
+  const [districts, setDistricts] = useState<GeoDistrict[]>([]);
 
   async function reload() {
     const token = getStoredToken();
@@ -67,14 +73,25 @@ export default function StorePage() {
       return;
     }
 
-    const nextMe = await tajerApi.me(token);
+    const [nextMe, nextCities] = await Promise.all([
+      tajerApi.me(token),
+      tajerApi.geoCities().catch(() => []),
+    ]);
     setMe(nextMe);
+    setCities(nextCities);
 
     const store = nextMe.stores[0];
     if (store) {
+      const cityId = fieldValue(store.city_id);
+      const nextDistricts = cityId
+        ? await tajerApi.geoDistricts(cityId).catch(() => [])
+        : [];
+      setDistricts(nextDistricts);
       setForm({
         name: fieldValue(store.name),
         category: fieldValue(store.category) || "بقالة",
+        city_id: cityId,
+        district_id: fieldValue(store.district_id),
         city_name_ar: fieldValue(store.city_name_ar),
         district_name_ar: fieldValue(store.district_name_ar),
         phone: fieldValue(store.phone),
@@ -93,6 +110,30 @@ export default function StorePage() {
 
   function setField(key: keyof StoreForm, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function selectCity(cityId: string) {
+    const city = cities.find((item) => item.id === cityId);
+    setDistricts([]);
+    setForm((current) => ({
+      ...current,
+      city_id: cityId,
+      city_name_ar: city?.name_ar || "",
+      district_id: "",
+      district_name_ar: "",
+    }));
+    if (cityId) {
+      void tajerApi.geoDistricts(cityId).then(setDistricts).catch(() => setDistricts([]));
+    }
+  }
+
+  function selectDistrict(districtId: string) {
+    const district = districts.find((item) => item.id === districtId);
+    setForm((current) => ({
+      ...current,
+      district_id: districtId,
+      district_name_ar: district?.name_ar || "",
+    }));
   }
 
   async function submit(event: React.FormEvent) {
@@ -121,6 +162,8 @@ export default function StorePage() {
       await tajerApi.updateStore(token, store.id, {
         name: form.name,
         category: form.category,
+        city_id: form.city_id || undefined,
+        district_id: form.district_id || undefined,
         city_name_ar: form.city_name_ar || undefined,
         district_name_ar: form.district_name_ar || undefined,
         phone: form.phone || undefined,
@@ -237,19 +280,34 @@ export default function StorePage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-bold text-ink-700">المدينة</label>
-                    <input
+                    <select
                       className="input mt-2"
-                      value={form.city_name_ar}
-                      onChange={(e) => setField("city_name_ar", e.target.value)}
-                    />
+                      value={form.city_id}
+                      onChange={(e) => selectCity(e.target.value)}
+                    >
+                      <option value="">اختر المدينة</option>
+                      {cities.map((city) => (
+                        <option key={city.id} value={city.id}>
+                          {city.name_ar}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="text-sm font-bold text-ink-700">الحي</label>
-                    <input
+                    <select
                       className="input mt-2"
-                      value={form.district_name_ar}
-                      onChange={(e) => setField("district_name_ar", e.target.value)}
-                    />
+                      value={form.district_id}
+                      onChange={(e) => selectDistrict(e.target.value)}
+                      disabled={!form.city_id}
+                    >
+                      <option value="">كل المدينة</option>
+                      {districts.map((district) => (
+                        <option key={district.id} value={district.id}>
+                          {district.name_ar}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
